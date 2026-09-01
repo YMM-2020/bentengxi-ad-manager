@@ -1,0 +1,2126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>广告任务策略</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    font-size: 14px; color: #262626; background: #f6f7f9; overflow: hidden;
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* ============================================================
+     左侧边栏
+     ============================================================ */
+  .sidebar {
+    width: 200px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
+    transition: width 0.2s;
+  }
+  .sidebar.collapsed { width: 64px; }
+  .sidebar-logo {
+    height: 48px; background: #00152a; display: flex; align-items: center; padding: 0 16px; flex-shrink: 0;
+  }
+  .sidebar-logo .logo-text { color: #fff; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+  .sidebar.collapsed .sidebar-logo .logo-text { font-size: 12px; }
+  .sidebar-menu { flex: 1; background: #00152a; overflow-y: auto; }
+  .sidebar-menu .menu-group { border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-group-header {
+    height: 44px; display: flex; align-items: center; padding: 0 16px; cursor: pointer;
+    color: rgba(255,255,255,0.75); font-size: 14px; gap: 8px; user-select: none;
+    transition: background 0.15s;
+  }
+  .sidebar-menu .menu-group-header:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-group-header .arrow {
+    font-size: 10px; transition: transform 0.2s; color: rgba(255,255,255,0.35);
+  }
+  .sidebar-menu .menu-group-header .arrow.open { transform: rotate(90deg); }
+  .sidebar-menu .menu-sub { overflow: hidden; max-height: 0; transition: max-height 0.2s; }
+  .sidebar-menu .menu-sub.open { max-height: 200px; }
+  .sidebar-menu .menu-sub .menu-item {
+    height: 40px; display: flex; align-items: center; padding: 0 16px 0 40px;
+    color: rgba(255,255,255,0.65); cursor: pointer; font-size: 13px; transition: background 0.15s;
+  }
+  .sidebar-menu .menu-sub .menu-item:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-sub .menu-item.active { background: #1890ff; color: #fff; font-weight: 500; }
+  .sidebar.collapsed .menu-group-header span:not(.arrow) { display: none; }
+  .sidebar.collapsed .menu-sub { display: none; }
+  .sidebar.collapsed .arrow { display: none; }
+  .sidebar-toggle {
+    height: 36px; background: #00152a; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: rgba(255,255,255,0.4); font-size: 12px; flex-shrink: 0;
+  }
+  .sidebar-toggle:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+
+  /* ============================================================
+     右侧内容区
+     ============================================================ */
+  .content-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 48px; background: #fff; display: flex; align-items: center; padding: 0 20px;
+    flex-shrink: 0; border-bottom: 1px solid #f0f0f0; gap: 8px;
+  }
+  .topbar .breadcrumb { font-size: 14px; color: #8c8c8c; }
+  .topbar .breadcrumb .sep { margin: 0 4px; color: #bfbfbf; }
+  .topbar .breadcrumb .current { color: #262626; font-weight: 500; }
+  .topbar .spacer { flex: 1; }
+  .tab-bar {
+    height: 36px; background: #f6f7f9; display: flex; align-items: center; padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .tab-bar .tab {
+    padding: 4px 12px; font-size: 13px; color: #1890ff; background: #e6f7ff;
+    border-radius: 4px; cursor: default;
+  }
+  .main { flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ---- 卡片 ---- */
+  .card { background: #fff; border-radius: 4px; }
+
+  /* ---- 筛选栏 ---- */
+  .filter-bar { padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .filter-bar label { font-size: 14px; color: #595959; white-space: nowrap; }
+  .filter-bar select, .filter-bar input[type="text"] {
+    height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px;
+    font-size: 14px; color: #262626; background: #fff; outline: none;
+  }
+  .filter-bar select:focus, .filter-bar input[type="text"]:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .filter-bar select { min-width: 130px; }
+
+  /* ---- 按钮 ---- */
+  .btn {
+    height: 32px; padding: 0 16px; border-radius: 4px; font-size: 14px; cursor: pointer;
+    border: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .btn-primary { background: #1890ff; color: #fff; }
+  .btn-primary:hover { background: #40a9ff; }
+  .btn-default { background: #fff; color: #595959; border: 1px solid #d9d9d9; }
+  .btn-default:hover { color: #1890ff; border-color: #1890ff; }
+  .btn-sm { height: 28px; padding: 0 12px; font-size: 12px; }
+  .btn-link { background: none; border: none; color: #1890ff; cursor: pointer; padding: 0 4px; font-size: 14px; }
+  .btn-link:hover { color: #40a9ff; }
+  .btn-link.danger { color: #ff4d4f; }
+  .btn-link.danger:hover { color: #ff7875; }
+  .btn:disabled, .btn-link:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .strategy-group-actions { display: flex; align-items: center; gap: 4px; }
+  .filter-bar .spacer { flex: 1; }
+
+  /* ---- 表格 ---- */
+  .table-card { background: #fff; border-radius: 4px; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+  thead th {
+    background: #fafafa; padding: 10px 12px; text-align: left; font-weight: 500;
+    color: #262626; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0;
+  }
+  thead th:last-child { border-right: none; }
+  tbody td {
+    padding: 12px; border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0; height: 48px;
+  }
+  tbody td:last-child { border-right: none; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: #f0f7ff !important; }
+  tbody tr.disabled-row { opacity: 0.55; }
+
+  /* ---- 表格内元素 ---- */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+  .tag-fuli { background: #fff7e6; color: #d46b08; }
+  .tag-qifu { background: #f6ffed; color: #389e0d; }
+  .tag-version { background: #f0f5ff; color: #1890ff; font-size: 12px; }
+  .icon-box { width: 40px; height: 40px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; background: #fafafa; }
+  .ad-name { font-weight: 500; color: #262626; }
+  .ecpm { color: #d46b08; font-weight: 500; }
+  .time-text { color: #8c8c8c; font-size: 13px; }
+
+  /* ---- Tooltip ---- */
+  .field-label { display: inline-flex; align-items: center; gap: 4px; position: relative; cursor: default; }
+  .field-label .tooltip {
+    display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #262626; color: #fff; font-size: 12px; font-weight: 400; padding: 6px 10px;
+    border-radius: 4px; white-space: nowrap; z-index: 1000; pointer-events: none;
+  }
+  .field-label .tooltip::after {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-bottom-color: #262626;
+  }
+  .field-label:hover .tooltip { display: block; }
+
+  /* ---- 帮助图标 ---- */
+  .help-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%; background: #d9d9d9; color: #fff;
+    font-size: 11px; font-weight: 600; cursor: help; position: relative; flex-shrink: 0;
+  }
+  .help-icon:hover { background: #1890ff; }
+  .help-icon .help-tooltip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: #262626; color: #fff; font-size: 12px; font-weight: 400; padding: 8px 12px;
+    border-radius: 4px; white-space: nowrap; z-index: 2000; pointer-events: none; line-height: 1.5;
+    max-width: 320px; white-space: normal;
+  }
+  .help-icon .help-tooltip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #262626;
+  }
+  .help-icon:hover .help-tooltip { display: block; }
+
+  /* ---- Switch ---- */
+  .switch { position: relative; display: inline-block; width: 44px; height: 22px; cursor: pointer; vertical-align: middle; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; inset: 0; background: #d9d9d9; border-radius: 22px; transition: all 0.2s; }
+  .switch .slider::before {
+    content: ''; position: absolute; width: 18px; height: 18px; left: 2px; bottom: 2px;
+    background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .switch input:checked + .slider { background: #1890ff; }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+
+  /* ---- 分页 ---- */
+  .pager {
+    padding: 12px 20px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #595959;
+    border-top: 1px solid #f0f0f0;
+  }
+  .pager .total { margin-right: auto; }
+  .pager .page-size { height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 14px; }
+  .pager .page-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid #d9d9d9;
+    background: #fff; font-size: 14px;
+  }
+  .pager .page-num.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+  .pager .page-num:hover:not(.active):not(.disabled) { border-color: #1890ff; color: #1890ff; }
+  .pager .page-num.disabled { color: #bfbfbf; cursor: not-allowed; }
+
+  /* ============================================================
+     弹窗（通用）
+     ============================================================ */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45); z-index: 2000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-overlay.confirm-overlay { z-index: 2100; }
+  .modal {
+    background: #fff; border-radius: 6px; width: 520px; max-width: 90vw;
+    max-height: 80vh; display: flex; flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+  .modal.confirm-modal { width: 440px; }
+  .modal.config-modal { width: 760px; }
+  .modal .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .modal .modal-header .title { font-size: 16px; font-weight: 500; color: #262626; }
+  .modal .modal-close {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #bfbfbf; font-size: 16px; border-radius: 4px;
+  }
+  .modal .modal-close:hover { background: #f5f5f5; color: #595959; }
+  .modal .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .modal .modal-footer {
+    padding: 12px 20px; border-top: 1px solid #f0f0f0;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .modal .modal-footer .spacer { flex: 1; }
+
+  /* ---- 确认弹窗 ---- */
+  .confirm-icon { text-align: center; font-size: 48px; margin-bottom: 12px; }
+  .confirm-msg { font-size: 14px; color: #595959; text-align: center; line-height: 1.6; }
+  .confirm-msg strong { color: #262626; }
+
+  /* ============================================================
+     配置表单（弹窗内）
+     ============================================================ */
+  .config-section { margin-bottom: 24px; }
+  .config-section:last-child { margin-bottom: 0; }
+  .config-section-title {
+    font-size: 15px; font-weight: 500; color: #262626;
+    padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 14px;
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 14px; font-weight: 500; color: #262626; display: inline-flex; align-items: center; gap: 4px; }
+  .form-group label .required { color: #ff4d4f; margin-left: 2px; }
+  .form-group input, .form-group select {
+    height: 32px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 4px;
+    font-size: 14px; outline: none; background: #fff; color: #262626;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+
+  .time-range { display: flex; align-items: center; gap: 4px; }
+  .time-range input[type="time"] {
+    height: 32px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; outline: none;
+  }
+  .time-range input[type="time"]:focus { border-color: #40a9ff; }
+  .time-range .sep { color: #bfbfbf; }
+
+  /* ---- 策略组 ---- */
+  .strategy-group {
+    background: #fafafa; border: 1px solid #f0f0f0; border-radius: 4px; padding: 16px 20px; margin-bottom: 12px;
+  }
+  .strategy-group-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+  }
+  .strategy-group-header .label { font-size: 14px; font-weight: 500; color: #1890ff; }
+  .strategy-group-header .label .sub { font-weight: 400; color: #8c8c8c; font-size: 12px; margin-left: 8px; }
+  .strategy-group .form-grid { grid-template-columns: 1fr 1fr 1fr; gap: 12px 16px; }
+  .strategy-add-wrap { display: flex; justify-content: center; padding: 4px 0 0; }
+  .fill-rate-row { display: flex; align-items: center; gap: 8px; }
+  .fill-rate-row .label-text { font-size: 14px; color: #262626; }
+  .form-group .pct-wrap { position: relative; }
+  .form-group .pct-wrap input { width: 100%; padding-right: 28px; }
+  .form-group .pct-wrap .pct-suffix { position: absolute; right: 8px; top: 0; bottom: 0; display: flex; align-items: center; color: #bfbfbf; font-size: 13px; }
+
+  /* ---- 时段策略-组内多条关联策略 ---- */
+  .tp-strategies { border-top: 1px dashed #d9d9d9; padding-top: 12px; margin-top: 2px; }
+  .tp-strategy-row {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px;
+    background: #fff; border: 1px solid #f0f0f0; border-radius: 4px; padding: 10px 14px; margin-bottom: 10px;
+  }
+  .tp-strategy-row .form-group { flex: 1 1 130px; margin-bottom: 0; }
+  .tp-strategy-row .form-group.tp-strategy-select { flex: 2 1 220px; }
+  .tp-strategy-row .tp-move-up, .tp-strategy-row .tp-move-down { flex: 0 0 auto; align-self: center; }
+  .tp-strategy-row .tp-del-strategy { flex: 0 0 auto; align-self: center; }
+
+  /* ---- 多选渠道（渠道生效） ---- */
+  .multi-select {
+    position: relative; min-height: 32px; border: 1px solid #d9d9d9; border-radius: 4px;
+    background: #fff; padding: 2px 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; cursor: text;
+  }
+  .multi-select:focus-within { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .multi-select .ms-tag {
+    display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 6px;
+    background: #f0f5ff; border: 1px solid #d6e4ff; color: #1890ff; border-radius: 3px; font-size: 12px;
+  }
+  .multi-select .ms-tag .ms-close { cursor: pointer; color: #8c8c8c; font-style: normal; }
+  .multi-select .ms-tag .ms-close:hover { color: #ff4d4f; }
+  .multi-select .ms-search { flex: 1; min-width: 90px; height: 26px; border: none; outline: none; font-size: 14px; }
+  .multi-select .ms-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+    background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    max-height: 220px; overflow-y: auto;
+  }
+  .multi-select .ms-dropdown.show { display: block; }
+  .multi-select .ms-option { padding: 8px 12px; font-size: 14px; cursor: pointer; }
+  .multi-select .ms-option:hover { background: #f0f7ff; }
+  .multi-select .ms-option.selected { background: #e6f7ff; color: #1890ff; font-weight: 500; }
+  .multi-select .ms-empty { padding: 12px; text-align: center; color: #bfbfbf; font-size: 13px; }
+
+  /* ---- 选择代理弹窗 ---- */
+  .agent-search {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px;
+    background: #fafafa; border: 1px solid #f0f0f0; border-radius: 4px; margin-bottom: 12px;
+  }
+  .agent-search label { font-size: 13px; color: #595959; white-space: nowrap; }
+  .agent-search select, .agent-search input[type="text"] {
+    height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 13px; outline: none; background: #fff;
+  }
+  .agent-search select:focus, .agent-search input[type="text"]:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .agent-search select { min-width: 130px; }
+  .agent-list { border: 1px solid #f0f0f0; border-radius: 4px; max-height: 340px; overflow-y: auto; }
+  .agent-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .agent-table thead th {
+    position: sticky; top: 0; background: #fafafa; padding: 8px 12px; text-align: left;
+    font-weight: 500; color: #595959; border-bottom: 1px solid #f0f0f0; white-space: nowrap;
+  }
+  .agent-table tbody td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  .agent-table tbody tr { cursor: pointer; }
+  .agent-table tbody tr:hover { background: #f0f7ff; }
+  .agent-table tbody tr.checked { background: #e6f7ff; }
+  .agent-table tbody tr.checked:hover { background: #d9efff; }
+
+  /* ---- Toast ---- */
+  #toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    background: #262626; color: #fff; padding: 10px 24px; border-radius: 4px;
+    font-size: 14px; z-index: 3000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================================================
+       左侧边栏
+       ============================================================ -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-text">本腾曦网络</span>
+    </div>
+    <div class="sidebar-menu">
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-ad')">
+          <span>📢</span>
+          <span>IAA管理</span>
+          <span class="arrow open" id="arrow-menu-ad">▶</span>
+        </div>
+        <div class="menu-sub open" id="menu-ad">
+          <div class="menu-item"><a href="广告位管理原型.html" style="color:inherit;text-decoration:none;">广告位管理</a></div>
+          <div class="menu-item active">广告任务策略</div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-dashboard')">
+          <span>📊</span>
+          <span>数据看板</span>
+          <span class="arrow" id="arrow-menu-dashboard">▶</span>
+        </div>
+        <div class="menu-sub" id="menu-dashboard">
+          <div class="menu-item">代理业务报表</div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-system')">
+          <span>⚙</span>
+          <span>系统设置</span>
+          <span class="arrow" id="arrow-menu-system">▶</span>
+        </div>
+        <div class="menu-sub" id="menu-system">
+          <div class="menu-item">系统设置</div>
+          <div class="menu-item">用户管理</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-toggle" onclick="toggleSidebar()" title="折叠/展开侧边栏">◀</div>
+  </div>
+
+  <!-- ============================================================
+       右侧内容区
+       ============================================================ -->
+  <div class="content-wrap">
+    <div class="topbar">
+      <span class="breadcrumb">IAA管理 <span class="sep">/</span> <span class="current">广告任务策略</span></span>
+      <span class="spacer"></span>
+    </div>
+    <div class="tab-bar">
+      <span class="tab">广告任务策略</span>
+    </div>
+    <div class="main">
+
+      <!-- 筛选栏 -->
+      <div class="card filter-bar">
+        <label>应用包名</label>
+        <select>
+          <option>全部</option>
+          <option>极速版</option>
+          <option>标准版</option>
+          <option>国际版</option>
+        </select>
+        <label>业务类型</label>
+        <select>
+          <option>全部</option>
+          <option>福利</option>
+          <option>祈福</option>
+          <option>签到</option>
+        </select>
+        <label>状态</label>
+        <select>
+          <option>全部</option>
+          <option>已启用</option>
+          <option>已禁用</option>
+        </select>
+        <label>广告任务标题</label>
+        <input type="text" placeholder="请输入广告任务标题" style="width:180px;">
+        <button class="btn btn-primary">🔍 查询</button>
+        <button class="btn btn-default">↻ 重置</button>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" onclick="openConfigModal()">＋ 新增广告任务</button>
+      </div>
+
+      <!-- 表格 -->
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;">编号</th>
+                <th>应用包名</th>
+                <th>业务类型</th>
+                <th>广告任务图标</th>
+                <th>广告任务标题</th>
+                <th>广告时间间隔（秒）</th>
+                <th>用户广告条数限制</th>
+                <th>设备广告条数限制</th>
+                <th>固定生效时段</th>
+                <th>eCPM 目标</th>
+                <th>生效时段广告条数</th>
+                <th>生效版本</th>
+                <th>排序</th>
+                <th>状态</th>
+                <th>广告单价要求</th>
+                <th>分成类型</th>
+                <th>创建时间</th>
+                <th style="min-width:80px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span class="total">共 <strong id="totalCount">6</strong> 条</span>
+          <span>每页</span>
+          <select class="page-size"><option>10</option><option selected>20</option><option>50</option></select>
+          <span>条</span>
+          <span class="page-num disabled">‹</span>
+          <span class="page-num active">1</span>
+          <span class="page-num disabled">›</span>
+          <span>跳至 <input type="text" style="width:40px;height:32px;border:1px solid #d9d9d9;border-radius:4px;text-align:center;font-size:14px;"> 页</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     确认弹窗
+     ============================================================ -->
+<div class="modal-overlay confirm-overlay" id="confirmModal">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <span class="title" id="confirmTitle">确认操作</span>
+      <span class="modal-close" onclick="closeConfirm()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-msg" id="confirmMessage">确定要执行此操作吗？</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-primary" id="confirmOkBtn" onclick="closeConfirm()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     配置弹窗（新增/编辑）
+     ============================================================ -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal config-modal">
+    <div class="modal-header">
+      <span class="title" id="configTitle">新增广告任务</span>
+      <span class="modal-close" onclick="closeConfigModal()">✕</span>
+    </div>
+    <div class="modal-body">
+
+      <!-- 全局广告分成比例启用提示横幅 -->
+      <div id="splitRatioBanner" style="display:none;background:#fff2f0;border:1px solid #ffccc7;border-radius:4px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#cf1322;">
+        <strong>⚠ 当前全局广告分成比例已启用</strong>，比例为 <span id="bannerSplitRatio" style="font-weight:700;"></span>，其他分成配置暂不生效。
+      </div>
+
+      <!-- 基础配置 -->
+      <div class="config-section">
+        <div class="config-section-title">基础配置</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>应用包名 <span class="required">*</span></label>
+            <select id="cfgApp">
+              <option value="">请选择</option>
+              <option>极速版</option>
+              <option>标准版</option>
+              <option>国际版</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>业务类型 <span class="required">*</span></label>
+            <select id="cfgType" onchange="onTypeChange()">
+              <option value="">请选择</option>
+              <option>福利</option>
+              <option>祈福</option>
+              <option>签到</option>
+            </select>
+          </div>
+          <div class="form-group" id="rowIcon">
+            <label>广告任务图标 <span class="required">*</span></label>
+            <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+              <div class="icon" id="uploadIcon">＋</div>
+              <span id="uploadText">上传</span>
+              <img id="uploadPreview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:3px;">
+            </div>
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="previewUpload(event)">
+            <div class="hint" style="font-size:12px;color:#bfbfbf;">支持 PNG / JPG / WebP，≤ 2MB</div>
+          </div>
+          <div class="form-group" id="rowName">
+            <label>广告任务标题 <span class="required">*</span></label>
+            <input type="text" id="cfgName" placeholder="请输入广告任务标题">
+          </div>
+          <div class="form-group" id="rowSubtitle">
+            <label>广告任务副标题 <span class="required">*</span></label>
+            <input type="text" id="cfgSubtitle" placeholder="请输入副标题">
+          </div>
+          <!-- 生效类型（非必填） -->
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>生效类型 </label>
+            <select id="cfgEffectType" onchange="applyEffectType()">
+              <option value="">请选择</option>
+              <option value="channel">渠道生效</option>
+              <option value="agent">代理生效</option>
+            </select>
+          </div>
+          <!-- 渠道生效设置 -->
+          <div class="form-group" id="channelEffectBlock" style="grid-column:1 / -1;display:none;">
+            <label>渠道生效设置</label>
+            <div class="multi-select" id="channelMultiSelect">
+              <div id="channelSelectedTags" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;"></div>
+              <input type="text" class="ms-search" id="channelSearchInput" placeholder="搜索渠道名称，支持多选">
+              <div class="ms-dropdown" id="channelDropdown"></div>
+            </div>
+          </div>
+          <!-- 代理生效设置 -->
+          <div class="form-group" id="agentEffectBlock" style="grid-column:1 / -1;display:none;">
+            <label>代理生效设置</label>
+            <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-default btn-sm" onclick="openAgentModal()">＋ 选择代理</button>
+              <div id="agentSelectedTags" style="display:flex;flex-wrap:wrap;gap:6px;padding-top:2px;"></div>
+            </div>
+          </div>
+          <!-- 生效用户（非必填，多行文本，手机号多个用逗号或换行分隔） -->
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>生效用户 </label>
+            <textarea id="cfgEffectUsers" rows="3" placeholder="输入用户手机号，多个用逗号或换行分隔" style="width:100%;min-height:90px;resize:vertical;padding:8px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;line-height:1.6;font-family:inherit;box-sizing:border-box;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>广告时间间隔（秒） <span class="required">*</span></label>
+            <input type="number" id="cfgInterval" placeholder="同一广告位两次请求冷却时间">
+          </div>
+          <div class="form-group">
+            <label>用户广告条数限制 <span class="required">*</span></label>
+            <input type="number" id="cfgUserLimit" placeholder="单用户全天最大请求上限，0 表示不限">
+          </div>
+          <div class="form-group">
+            <label>设备广告条数限制 <span class="required">*</span></label>
+            <input type="number" id="cfgDeviceLimit" placeholder="单设备全天最大请求上限，0 表示不限">
+          </div>
+          <!-- 阳线条件 -->
+          <div class="form-group">
+            <label>阳线条件</label>
+            <select id="cfgYangLine">
+              <option value="unlimited" selected>不限</option>
+              <option value="on">在阳线</option>
+              <option value="off">不在阳线</option>
+            </select>
+          </div>
+          <!-- 广告条数要求 -->
+          <div class="form-group">
+            <label>广告条数要求</label>
+            <input type="number" id="cfgAdRequirement" min="0" placeholder="请输入">
+          </div>
+          <!-- V1.1 新增：昨日单价门槛 -->
+          <div class="form-group">
+            <label>
+              广告单价要求（金币）
+            </label>
+            <input type="number" id="cfgMinCoinPrice" min="0" placeholder="空/0 表示无门槛，所有用户可见">
+          </div>
+          <!-- V1.1 新增：分成类型（占满一行）-->
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>分成类型 </label>
+            <div style="display:flex;gap:24px;padding-top:4px;">
+              <label style="font-weight:400;font-size:14px;cursor:pointer;">
+                <input type="radio" name="rewardType" value="ratio" checked onchange="toggleRewardType()"> 按比例分成
+              </label>
+              <label style="font-weight:400;font-size:14px;cursor:pointer;">
+                <input type="radio" name="rewardType" value="fixed" onchange="toggleRewardType()"> 固定金币奖励
+              </label>
+            </div>
+          </div>
+          <!-- 按比例分成模式：分成比例输入 -->
+          <div class="form-group" id="ratioInputGroup">
+            <label>广告分成比例（%）</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="cfgSplitRatio" step="0.01" min="0" max="100" placeholder="留空则不启用" style="flex:1;">
+            </div>
+          </div>
+          <!-- 固定金币模式：固定金币数量输入 -->
+          <div class="form-group" id="fixedCoinInputGroup" style="display:none;">
+            <label>固定金币奖励</label>
+            <input type="number" id="cfgFixedCoin" min="1" max="1000000" placeholder="请输入固定金币数量（1-1000000）">
+          </div>
+          <div class="form-group">
+            <label>排序 <span class="required">*</span></label>
+            <input type="number" id="cfgSort" placeholder="0" value="0">
+          </div>
+          <div class="form-group">
+            <label>最低版本 <span class="required">*</span></label>
+            <input type="number" id="cfgVerMin" placeholder="如 100">
+          </div>
+          <div class="form-group">
+            <label>最高版本 <span class="required">*</span></label>
+            <input type="number" id="cfgVerMax" placeholder="如 200">
+          </div>
+        </div>
+      </div>
+
+      <!-- 关联广告位 -->
+      <div class="config-section" id="strategyAssocSection">
+        <div class="config-section-title">关联广告位 </div>
+        <div id="strategyAssocContainer">
+          <div class="strategy-group" id="sa1">
+            <div class="strategy-group-header">
+              <div>
+                <span class="label">广告位 1</span>
+              </div>
+              <div class="strategy-group-actions">
+                <button class="btn-link move-up" onclick="moveStrategyAssoc('sa1',-1)">↑ 上移</button>
+                <button class="btn-link move-down" onclick="moveStrategyAssoc('sa1',1)">↓ 下移</button>
+                <button class="btn btn-sm btn-link danger del-btn" onclick="removeStrategyAssocGroup('sa1')">✕ 删除</button>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>广告位 <span class="required">*</span></label>
+                <select class="saStrategy">
+                  <option value="">请选择</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>填充率要求</label>
+                <div class="fill-rate-row">
+                  <label class="switch"><input type="checkbox" class="saFillOn"><span class="slider"></span></label>
+                  <span class="label-text saFillText">已关闭</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>腾讯填充率（%）</label>
+                <div class="pct-wrap">
+                  <input type="text" class="saTencent" placeholder="请输入">
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>快手填充率（%）</label>
+                <div class="pct-wrap">
+                  <input type="text" class="saKuaishou" placeholder="请输入">
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>百度填充率（%）</label>
+                <div class="pct-wrap">
+                  <input type="text" class="saBaidu" placeholder="请输入">
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="strategy-add-wrap" id="strategyAssocAddBtn">
+          <button class="btn btn-default btn-sm" onclick="addStrategyAssocGroup()">＋ 再加一组</button>
+        </div>
+      </div>
+
+      <!-- 时段策略 -->
+      <div class="config-section">
+        <div class="config-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>时段策略 </span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#595959;font-weight:400;">时段策略
+            <label class="switch"><input type="checkbox" id="tpEnable" onchange="refreshTpMode()"><span class="slider"></span></label>
+          </span>
+        </div>
+        <div id="timePriceContainer">
+          <div class="strategy-group" id="tp1">
+            <div class="strategy-group-header">
+              <div>
+                <span class="label">时段 1 </span>
+              </div>
+              <button class="btn btn-sm btn-link danger del-btn" onclick="removeTimePriceGroup('tp1')">✕ 删除</button>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>固定生效时段<span class="required">*</span></label>
+                <div class="time-range">
+                  <input type="time" class="tpTimeStart">
+                  <span class="sep">—</span>
+                  <input type="time" class="tpTimeEnd">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>
+                  eCPM
+                  <span class="help-icon">?
+                    <span class="help-tooltip" style="max-width:520px;">海量金币广告位需连续 5 条广告的ECPM均大于阈值X(随下方配置)时生效 &nbsp;|&nbsp; ECPM值是广告平台返回的数据，计算规则为 ECPM / 100000 ，也就是说 10000 ECPM约等于 0.1 元</span>
+                  </span>
+                </label>
+                <input type="number" step="0.01" class="tpEcpm" placeholder="请输入">
+              </div>
+              <div class="form-group">
+                <label>生效时段广告条数</label>
+                <input type="number" class="tpAdLimit" placeholder="时段内单设备独立上限">
+              </div>
+            </div>
+            <div class="tp-strategies">
+              <div class="tp-strategy-row">
+                <div class="form-group tp-strategy-select">
+                  <label>广告位 <span class="required">*</span></label>
+                  <select class="tpStrategy"><option value="">请选择</option></select>
+                </div>
+                <div class="form-group">
+                  <label>填充率要求</label>
+                  <div class="fill-rate-row">
+                    <label class="switch"><input type="checkbox" class="tpFillOn"><span class="slider"></span></label>
+                    <span class="label-text tpFillText">已关闭</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>腾讯填充率（%）</label>
+                  <div class="pct-wrap"><input type="text" class="tpTencent" placeholder="请输入"><span class="pct-suffix">%</span></div>
+                </div>
+                <div class="form-group">
+                  <label>快手填充率（%）</label>
+                  <div class="pct-wrap"><input type="text" class="tpKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div>
+                </div>
+                <div class="form-group">
+                  <label>百度填充率（%）</label>
+                  <div class="pct-wrap"><input type="text" class="tpBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div>
+                </div>
+                <button class="btn-link tp-move-up" onclick="moveTpStrategy('tp1', this, -1)">↑ 上移</button>
+                <button class="btn-link tp-move-down" onclick="moveTpStrategy('tp1', this, 1)">↓ 下移</button>
+                <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('tp1', this)">✕ 删除</button>
+              </div>
+            </div>
+            <div class="strategy-add-wrap">
+              <button class="btn btn-default btn-sm" onclick="addTpStrategy('tp1')">＋ 添加广告位</button>
+            </div>
+          </div>
+        </div>
+        <div class="strategy-add-wrap" id="timePriceAddBtn">
+          <button class="btn btn-default btn-sm" onclick="addTimePriceGroup()">＋ 再加一组</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 0 0;">
+        <span style="font-size:15px;font-weight:500;color:#262626;">状态</span>
+        <label class="switch">
+          <input type="checkbox" id="configStatus" checked>
+          <span class="slider"></span>
+        </label>
+        <span id="configStatusText" style="font-size:14px;color:#333;">已启用</span>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:#bfbfbf;" id="configModeHint"></span>
+      <span class="spacer"></span>
+      <button class="btn btn-default" onclick="closeConfigModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveConfig()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     选择代理弹窗
+     ============================================================ -->
+<div class="modal-overlay" id="agentModal" style="z-index:2050;">
+  <div class="modal config-modal" style="width:640px;">
+    <div class="modal-header">
+      <span class="title">选择代理</span>
+      <span class="modal-close" onclick="closeAgentModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="agent-search">
+        <label>所属渠道</label>
+        <select id="agentSearchChannel"><option value="">全部渠道</option></select>
+        <label>用户手机号</label>
+        <input type="text" id="agentSearchPhone" placeholder="请输入电话号码">
+        <button class="btn btn-primary btn-sm" onclick="renderAgentList()">🔍 查询</button>
+        <button class="btn btn-default btn-sm" onclick="resetAgentSearch()">↻ 重置</button>
+      </div>
+      <div class="agent-list">
+        <table class="agent-table">
+          <thead>
+            <tr>
+              <th style="width:44px;"><input type="checkbox" id="agentSelectAll" title="全选"></th>
+              <th>代理ID</th>
+              <th>所属渠道</th>
+              <th>代理名称</th>
+              <th>用户手机号</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="agentList"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:13px;color:#8c8c8c;" id="agentSelectCount">已选 0 个代理</span>
+      <span class="spacer"></span>
+      <button class="btn btn-default" onclick="closeAgentModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmAgentSelect()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ============================================================
+  // Mock Data
+  // ============================================================
+  const adSlots = [
+    { id:1, app:'极速版', type:'福利', typeCls:'tag-fuli', icon:'🎰', name:'海量金币转不停', subtitle:'一分购大米', interval:30, userLimit:20, deviceLimit:40, sort:1, enabled:true, created:'2026-07-24 14:30:22', verMin:100, verMax:null, timePrice:[{ timeStart:'08:00', timeEnd:'12:00', ecpm:'15.50', adLimit:'10', strategies:[{ strategyName:'金币-主推-AdMob', fillRateOn:true, tencent:'80', kuaishou:'', baidu:'' }] }], strategyAssoc:[], useTimePrice:true, splitRatio:'', minCoinPrice:'', rewardType:'ratio', fixedCoin:'' },
+    { id:2, app:'极速版', type:'福利', typeCls:'tag-fuli', icon:'💰', name:'一分购大米', subtitle:'新人专享', interval:30, userLimit:20, deviceLimit:40, sort:2, enabled:true, created:'2026-07-24 11:20:15', verMin:100, verMax:200, timePrice:[{ timeStart:'14:00', timeEnd:'18:00', ecpm:'12.00', adLimit:'8', strategies:[{ strategyName:'大米-主推-Facebook', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }] }], strategyAssoc:[], useTimePrice:true, splitRatio:'', minCoinPrice:'50', rewardType:'fixed', fixedCoin:'100' },
+    { id:3, app:'标准版', type:'祈福', typeCls:'tag-qifu', icon:'', name:'', subtitle:'', interval:60, userLimit:15, deviceLimit:30, sort:3, enabled:true, created:'2026-07-23 18:00:00', verMin:201, verMax:null, timePrice:[{ timeStart:'06:00', timeEnd:'09:00', ecpm:'18.00', adLimit:'15', strategies:[{ strategyName:'祈福-主推-AdMob', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }] }], strategyAssoc:[], useTimePrice:true, splitRatio:'80', minCoinPrice:'30', rewardType:'ratio', fixedCoin:'' },
+    { id:4, app:'国际版', type:'福利', typeCls:'tag-fuli', icon:'🎁', name:'新人专享大礼包', subtitle:'限时领取', interval:20, userLimit:10, deviceLimit:20, sort:4, enabled:false, created:'2026-07-22 09:45:33', verMin:null, verMax:null, timePrice:[], strategyAssoc:[{ strategyName:'礼包-主推-快手', fillRateOn:true, tencent:'', kuaishou:'75', baidu:'' }], useTimePrice:false, splitRatio:'', minCoinPrice:'', rewardType:'ratio', fixedCoin:'' },
+    { id:5, app:'极速版', type:'祈福', typeCls:'tag-qifu', icon:'', name:'', subtitle:'', interval:60, userLimit:12, deviceLimit:24, sort:5, enabled:true, created:'2026-07-21 16:10:08', verMin:120, verMax:null, timePrice:[{ timeStart:'22:00', timeEnd:'06:00', ecpm:'20.00', adLimit:'12', strategies:[{ strategyName:'祈福-主推-AdMob', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }] }], strategyAssoc:[], useTimePrice:true, splitRatio:'', minCoinPrice:'', rewardType:'ratio', fixedCoin:'' },
+    { id:6, app:'标准版', type:'福利', typeCls:'tag-fuli', icon:'💎', name:'签到领钻石', subtitle:'每日签到', interval:30, userLimit:30, deviceLimit:60, sort:6, enabled:true, created:'2026-07-20 10:30:00', verMin:200, verMax:300, timePrice:[], strategyAssoc:[{ strategyName:'签到-主推-百度', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }], useTimePrice:false, splitRatio:'50', minCoinPrice:'', rewardType:'ratio', fixedCoin:'' },
+    { id:7, app:'极速版', type:'福利', typeCls:'tag-fuli', icon:'🎯', name:'精准流量推荐', subtitle:'高峰双段投放', interval:30, userLimit:25, deviceLimit:50, sort:7, enabled:true, created:'2026-07-25 09:00:00', verMin:100, verMax:null, timePrice:[{ timeStart:'08:00', timeEnd:'12:00', ecpm:'16.00', adLimit:'12', strategies:[{ strategyName:'流量-主推-腾讯', fillRateOn:true, tencent:'90', kuaishou:'', baidu:'' }, { strategyName:'金币-主推-AdMob', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }] }, { timeStart:'19:00', timeEnd:'23:00', ecpm:'22.00', adLimit:'18', strategies:[{ strategyName:'流量-主推-腾讯', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }] }], strategyAssoc:[], useTimePrice:true, splitRatio:'', minCoinPrice:'', rewardType:'ratio', fixedCoin:'' },
+  ];
+  // 广告位数据（与「广告位管理」菜单同源，供关联广告位下拉选择）
+  const strategiesData = [
+    { id:1, strategyName:'金币-主推-AdMob', platform:'Android', alliance:'AdMob' },
+    { id:2, strategyName:'金币-兜底-腾讯', platform:'Android', alliance:'腾讯广告' },
+    { id:3, strategyName:'大米-主推-Facebook', platform:'Android', alliance:'Facebook' },
+    { id:4, strategyName:'大米-备用-百度', platform:'IOS', alliance:'百度联盟' },
+    { id:5, strategyName:'祈福-主推-AdMob', platform:'IOS', alliance:'AdMob' },
+    { id:6, strategyName:'礼包-主推-快手', platform:'Android', alliance:'快手联盟' },
+    { id:7, strategyName:'签到-主推-百度', platform:'Android', alliance:'百度联盟' },
+    { id:8, strategyName:'流量-主推-腾讯', platform:'IOS', alliance:'腾讯广告' },
+  ];
+  let nextId = 8;
+  let editingId = null; // null = 新增, number = 编辑
+  let currentIcon = ''; // 配置弹窗中当前广告任务图标（图片 dataURL 或 emoji）
+
+  // ============================================================
+  // Render Table
+  // ============================================================
+  function renderTable(data) {
+    // 默认按创建时间倒序
+    const list = (data || adSlots).slice().sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    const tbody = document.getElementById('tableBody');
+    document.getElementById('totalCount').textContent = list.length;
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告任务数据，点击右上角「＋ 新增广告任务」创建</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((row, idx) => {
+      // 一个广告位可能配置多条时段策略，按行展示固定生效时段 / eCPM / 生效时段广告条数
+      const tpLines = (row.timePrice && row.timePrice.length) ? row.timePrice : [{}];
+      const timeDisplay = tpLines.map(t => (t.timeStart && t.timeEnd ? t.timeStart + ' - ' + t.timeEnd : '—')).join('<br>');
+      const ecpmDisplay = tpLines.map(t => (t.ecpm ? parseFloat(t.ecpm).toFixed(2) : '—')).join('<br>');
+      const adLimitDisplay = tpLines.map(t => (t.adLimit ? t.adLimit : '—')).join('<br>');
+      const versionDisplay = [row.verMin, row.verMax].filter(v => v !== null && v !== '').join(' ~ ') || '—';
+      return `<tr class="${row.enabled ? '' : 'disabled-row'}">
+        <td style="text-align:center;color:#8c8c8c;">${idx + 1}</td>
+        <td>${row.app}</td>
+        <td><span class="tag ${row.typeCls}">${row.type}</span></td>
+        <td>${row.icon ? '<div class="icon-box">' + row.icon + '</div>' : '<span style="color:#bfbfbf;">-</span>'}</td>
+        <td>${row.name ? '<span class="ad-name">' + row.name + '</span>' : '<span style="color:#bfbfbf;">-</span>'}</td>
+        <td>${row.interval || '—'}</td>
+        <td>${row.userLimit || '—'}</td>
+        <td>${row.deviceLimit || '—'}</td>
+        <td><span class="time-text">${timeDisplay}</span></td>
+        <td><span class="ecpm">${ecpmDisplay}</span></td>
+        <td>${adLimitDisplay}</td>
+        <td><span class="tag tag-version">${versionDisplay}</span></td>
+        <td>${row.sort || '—'}</td>
+        <td><label class="switch" onclick="toggleStatus(event,${row.id},'${row.name}')"><input type="checkbox" ${row.enabled?'checked':''}><span class="slider"></span></label></td>
+        <td style="font-size:13px;">${row.minCoinPrice ? '<span style="font-weight:500;">≥ ' + row.minCoinPrice + ' 金币</span>' : '<span style="color:#bfbfbf;">无门槛</span>'}</td>
+        <td style="font-size:13px;">${row.rewardType === 'fixed' ? '<span style="font-weight:500;">固定金币(' + row.fixedCoin + ')</span>' : row.splitRatio ? '<span style="font-weight:500;">比例分成(' + row.splitRatio + '%)</span>' : '<span style="color:#bfbfbf;">未配置</span>'}</td>
+        <td style="font-size:13px;color:#8c8c8c;">${row.created}</td>
+        <td>
+          <button class="btn-link" onclick="editAd(${row.id})">编辑</button>
+          <button class="btn-link danger" onclick="confirmDelete(${row.id},'${row.name}')">删除</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  renderTable();
+  refreshTimePriceActions();
+  refreshTpStrategyActions(document.getElementById('tp1'));
+
+  // ============================================================
+  // 分成类型切换
+  // ============================================================
+  function toggleRewardType() {
+    const rewardType = document.querySelector('input[name="rewardType"]:checked').value;
+    const ratioGroup = document.getElementById('ratioInputGroup');
+    const fixedGroup = document.getElementById('fixedCoinInputGroup');
+    if (rewardType === 'fixed') {
+      ratioGroup.style.display = 'none';
+      fixedGroup.style.display = '';
+    } else {
+      ratioGroup.style.display = '';
+      fixedGroup.style.display = 'none';
+    }
+  }
+
+  // ============================================================
+  // Sidebar
+  // ============================================================
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+  function toggleMenu(id) {
+    const el = document.getElementById(id);
+    const arrow = document.getElementById('arrow-' + id.replace('menu-',''));
+    if (!el) return;
+    el.classList.toggle('open');
+    if (arrow) arrow.classList.toggle('open');
+  }
+
+  // ============================================================
+  // Config Modal
+  // ============================================================
+  function openConfigModal() {
+    editingId = null;
+    document.getElementById('configTitle').textContent = '新增广告任务';
+    document.getElementById('configModeHint').textContent = '';
+    resetConfigForm();
+    document.getElementById('configModal').classList.add('show');
+  }
+
+  function closeConfigModal() {
+    // 未保存离开时提示
+    showConfirm('确认取消', '当前配置尚未保存，确定要离开吗？', function() {
+      document.getElementById('configModal').classList.remove('show');
+    });
+  }
+
+  function previewUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('文件大小不能超过 2MB');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      currentIcon = ev.target.result;
+      setIconDisplay();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 根据当前图标值渲染上传框（图片 dataURL / emoji 图标 / 空）
+  function setIconDisplay() {
+    const preview = document.getElementById('uploadPreview');
+    const iconEl = document.getElementById('uploadIcon');
+    const text = document.getElementById('uploadText');
+    if (!currentIcon) {
+      preview.style.display = 'none'; preview.src = '';
+      iconEl.style.display = ''; iconEl.textContent = '＋';
+      text.textContent = '上传';
+    } else if (currentIcon.length <= 4) {
+      iconEl.style.display = ''; iconEl.textContent = currentIcon;
+      preview.style.display = 'none'; preview.src = '';
+      text.textContent = '替换';
+    } else {
+      preview.src = currentIcon; preview.style.display = 'block';
+      iconEl.style.display = 'none';
+      text.textContent = '替换';
+    }
+  }
+
+  function resetConfigForm() {
+    document.getElementById('cfgApp').value = '';
+    document.getElementById('cfgType').value = '';
+    document.getElementById('cfgName').value = '';
+    document.getElementById('cfgSubtitle').value = '';
+    document.getElementById('cfgInterval').value = '';
+    document.getElementById('cfgUserLimit').value = '';
+    document.getElementById('cfgDeviceLimit').value = '';
+    document.getElementById('cfgSort').value = '0';
+    document.getElementById('cfgVerMin').value = '';
+    document.getElementById('cfgVerMax').value = '';
+    document.getElementById('cfgSplitRatio').value = '';
+    document.getElementById('cfgMinCoinPrice').value = '';
+    document.getElementById('cfgFixedCoin').value = '';
+    document.querySelector('input[name="rewardType"][value="ratio"]').checked = true;
+    document.getElementById('ratioInputGroup').style.display = '';
+    document.getElementById('fixedCoinInputGroup').style.display = 'none';
+    document.getElementById('splitRatioBanner').style.display = 'none';
+    // 重置上传预览
+    currentIcon = '';
+    setIconDisplay();
+    // 重置时段策略开关为默认关闭（与关联广告位互斥）
+    document.getElementById('tpEnable').checked = false;
+    // 重置时段策略组，保留第 1 组并清空
+    const container = document.getElementById('timePriceContainer');
+    const groups = container.querySelectorAll('.strategy-group');
+    for (let i = 1; i < groups.length; i++) groups[i].remove();
+    const first = container.querySelector('.strategy-group');
+    if (first) {
+      first.querySelector('.tpTimeStart').value = '';
+      first.querySelector('.tpTimeEnd').value = '';
+      first.querySelector('.tpEcpm').value = '';
+      first.querySelector('.tpAdLimit').value = '';
+      // 清空时段内广告位行，恢复为一条空广告位
+      first.querySelector('.tp-strategies').innerHTML = '';
+      addTpStrategy(first.id);
+    }
+    // 重置关联广告位组，保留第 1 组并清空
+    const saContainer = document.getElementById('strategyAssocContainer');
+    const saGroups = saContainer.querySelectorAll('.strategy-group');
+    for (let i = 1; i < saGroups.length; i++) saGroups[i].remove();
+    const saFirst = saContainer.querySelector('.strategy-group');
+    if (saFirst) {
+      saFirst.querySelector('.saStrategy').value = '';
+      saFirst.querySelector('.saFillOn').checked = false;
+      saFirst.querySelector('.saFillText').textContent = '已关闭';
+      saFirst.querySelector('.saTencent').value = '';
+      saFirst.querySelector('.saKuaishou').value = '';
+      saFirst.querySelector('.saBaidu').value = '';
+    }
+    // 重置状态为启用
+    document.getElementById('configStatus').checked = true;
+    document.getElementById('configStatusText').textContent = '已启用';
+    // 重置生效类型 / 渠道 / 代理（均为非必填）
+    document.getElementById('cfgEffectType').value = '';
+    document.getElementById('cfgEffectUsers').value = '';
+    selectedChannels.clear();
+    selectedAgents.clear();
+    renderChannelTags();
+    renderAgentBlock();
+    applyEffectType();
+    // 重置阳线条件 / 广告条数要求
+    document.getElementById('cfgYangLine').value = 'unlimited';
+    document.getElementById('cfgAdRequirement').value = '';
+    refreshTimePriceActions();
+    refreshStrategyAssocActions();
+    refreshStrategyOptions();
+    refreshTpMode();
+    onTypeChange();
+  }
+
+  function editAd(id) {
+    const item = adSlots.find(a => a.id === id);
+    if (!item) return;
+    editingId = id;
+    document.getElementById('configTitle').textContent = '编辑广告任务';
+    document.getElementById('configModeHint').textContent = '正在编辑：「' + item.name + '」';
+    document.getElementById('cfgApp').value = item.app;
+    document.getElementById('cfgType').value = item.type;
+    currentIcon = item.icon || '';
+    setIconDisplay();
+    document.getElementById('cfgName').value = item.name;
+    document.getElementById('cfgSubtitle').value = item.subtitle || '';
+    document.getElementById('cfgInterval').value = item.interval || '';
+    document.getElementById('cfgUserLimit').value = item.userLimit || '';
+    document.getElementById('cfgDeviceLimit').value = item.deviceLimit || '';
+    document.getElementById('cfgSort').value = item.sort || '';
+    refreshStrategyOptions();
+    document.getElementById('cfgVerMin').value = item.verMin !== null && item.verMin !== undefined ? item.verMin : '';
+    document.getElementById('cfgVerMax').value = item.verMax !== null && item.verMax !== undefined ? item.verMax : '';
+    document.getElementById('cfgSplitRatio').value = item.splitRatio || '';
+    document.getElementById('cfgMinCoinPrice').value = item.minCoinPrice || '';
+    document.getElementById('cfgFixedCoin').value = item.fixedCoin || '';
+    // 设置分成类型
+    const rewardType = item.rewardType || 'ratio';
+    const radio = document.querySelector('input[name="rewardType"][value="' + rewardType + '"]');
+    if (radio) radio.checked = true;
+    if (rewardType === 'fixed') {
+      document.getElementById('ratioInputGroup').style.display = 'none';
+      document.getElementById('fixedCoinInputGroup').style.display = '';
+    } else {
+      document.getElementById('ratioInputGroup').style.display = '';
+      document.getElementById('fixedCoinInputGroup').style.display = 'none';
+    }
+    // 控制编辑时全局分成比例提示横幅
+    const banner = document.getElementById('splitRatioBanner');
+    const bannerVal = document.getElementById('bannerSplitRatio');
+    if (item.splitRatio && parseFloat(item.splitRatio) > 0) {
+      banner.style.display = 'block';
+      bannerVal.textContent = item.splitRatio + '%';
+    } else {
+      banner.style.display = 'none';
+    }
+    // 恢复时段策略开关状态并联动显隐
+    document.getElementById('tpEnable').checked = !!item.useTimePrice;
+    refreshTpMode();
+    // 填充时段策略组
+    const container = document.getElementById('timePriceContainer');
+    const groups = container.querySelectorAll('.strategy-group');
+    for (let i = 1; i < groups.length; i++) groups[i].remove();
+    const tpData = item.timePrice || [{ timeStart:'', timeEnd:'', ecpm:'', adLimit:'' }];
+    const first = container.querySelector('.strategy-group');
+    if (first) fillTpGroup(first, tpData[0]);
+    for (let i = 1; i < tpData.length; i++) {
+      addTimePriceGroup(tpData[i]);
+    }
+    // 生效类型 / 生效用户 / 渠道 / 代理（非必填）
+    document.getElementById('cfgEffectType').value = item.effectType || '';
+    document.getElementById('cfgEffectUsers').value = item.effectUsers || '';
+    selectedChannels.clear();
+    (item.effectChannels || []).forEach(c => selectedChannels.add(c));
+    selectedAgents.clear();
+    (item.effectAgents || []).forEach(a => selectedAgents.add(a));
+    renderChannelTags();
+    renderAgentBlock();
+    applyEffectType();
+    // 阳线条件 / 广告条数要求
+    document.getElementById('cfgYangLine').value = item.yangLine || 'unlimited';
+    document.getElementById('cfgAdRequirement').value = item.adRequirement || '';
+    // 填充关联广告位组
+    const saContainer = document.getElementById('strategyAssocContainer');
+    const saGroups = saContainer.querySelectorAll('.strategy-group');
+    for (let i = 1; i < saGroups.length; i++) saGroups[i].remove();
+    const saData = item.strategyAssoc || [{ strategyName:'', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }];
+    const saFirst = saContainer.querySelector('.strategy-group');
+    if (saFirst) fillSaGroup(saFirst, saData[0]);
+    for (let i = 1; i < saData.length; i++) {
+      addStrategyAssocGroup(saData[i]);
+    }
+    // 设置状态
+    const statusCb = document.getElementById('configStatus');
+    statusCb.checked = item.enabled !== false;
+    document.getElementById('configStatusText').textContent = statusCb.checked ? '已启用' : '已禁用';
+    refreshTimePriceActions();
+    refreshStrategyAssocActions();
+    onTypeChange();
+    document.getElementById('configModal').classList.add('show');
+  }
+
+  function fillSaGroup(el, data) {
+    if (!el || !data) return;
+    const ok = data.strategyName && strategiesData.some(s => s.strategyName === data.strategyName);
+    el.querySelector('.saStrategy').value = ok ? data.strategyName : '';
+    el.querySelector('.saFillOn').checked = !!data.fillRateOn;
+    el.querySelector('.saFillText').textContent = data.fillRateOn ? '已开启' : '已关闭';
+    el.querySelector('.saTencent').value = data.tencent || '';
+    el.querySelector('.saKuaishou').value = data.kuaishou || '';
+    el.querySelector('.saBaidu').value = data.baidu || '';
+  }
+
+  function fillTpGroup(el, data) {
+    if (!el || !data) return;
+    el.querySelector('.tpTimeStart').value = data.timeStart || '';
+    el.querySelector('.tpTimeEnd').value = data.timeEnd || '';
+    el.querySelector('.tpEcpm').value = data.ecpm || '';
+    el.querySelector('.tpAdLimit').value = data.adLimit || '';
+    // 时段内可配置多条关联广告位：清空并按 data.strategies 重建
+    const strategies = (data.strategies && data.strategies.length) ? data.strategies : [null];
+    el.querySelector('.tp-strategies').innerHTML = '';
+    strategies.forEach(s => addTpStrategy(el.id, s));
+  }
+
+  function copyAd(id) {
+    const item = adSlots.find(a => a.id === id);
+    if (!item) return;
+    editingId = null;
+    document.getElementById('configTitle').textContent = '新增广告任务（复制）';
+    document.getElementById('configModeHint').textContent = '基于「' + item.name + '」复制';
+    document.getElementById('cfgApp').value = item.app;
+    document.getElementById('cfgType').value = item.type;
+    currentIcon = item.icon || '';
+    setIconDisplay();
+    document.getElementById('cfgName').value = item.name + '_副本';
+    document.getElementById('cfgSubtitle').value = item.subtitle || '';
+    document.getElementById('cfgInterval').value = item.interval || '';
+    document.getElementById('cfgUserLimit').value = item.userLimit || '';
+    document.getElementById('cfgDeviceLimit').value = item.deviceLimit || '';
+    document.getElementById('cfgSort').value = item.sort || '0';
+    refreshStrategyOptions();
+    document.getElementById('cfgVerMin').value = item.verMin !== null && item.verMin !== undefined ? item.verMin : '';
+    document.getElementById('cfgVerMax').value = item.verMax !== null && item.verMax !== undefined ? item.verMax : '';
+    document.getElementById('cfgSplitRatio').value = item.splitRatio || '';
+    document.getElementById('cfgMinCoinPrice').value = item.minCoinPrice || '';
+    document.getElementById('cfgFixedCoin').value = item.fixedCoin || '';
+    const rewardType = item.rewardType || 'ratio';
+    const radio = document.querySelector('input[name="rewardType"][value="' + rewardType + '"]');
+    if (radio) radio.checked = true;
+    if (rewardType === 'fixed') {
+      document.getElementById('ratioInputGroup').style.display = 'none';
+      document.getElementById('fixedCoinInputGroup').style.display = '';
+    } else {
+      document.getElementById('ratioInputGroup').style.display = '';
+      document.getElementById('fixedCoinInputGroup').style.display = 'none';
+    }
+    // 恢复时段策略开关状态并联动显隐
+    document.getElementById('tpEnable').checked = !!item.useTimePrice;
+    refreshTpMode();
+    // 复制时段策略组
+    const container = document.getElementById('timePriceContainer');
+    const groups = container.querySelectorAll('.strategy-group');
+    for (let i = 1; i < groups.length; i++) groups[i].remove();
+    const tpData = item.timePrice || [{ timeStart:'', timeEnd:'', ecpm:'', adLimit:'' }];
+    const first = container.querySelector('.strategy-group');
+    if (first) fillTpGroup(first, tpData[0]);
+    for (let i = 1; i < tpData.length; i++) {
+      addTimePriceGroup(tpData[i]);
+    }
+    // 填充关联广告位组
+    const saContainer = document.getElementById('strategyAssocContainer');
+    const saGroups = saContainer.querySelectorAll('.strategy-group');
+    for (let i = 1; i < saGroups.length; i++) saGroups[i].remove();
+    const saData = item.strategyAssoc || [{ strategyName:'', fillRateOn:false, tencent:'', kuaishou:'', baidu:'' }];
+    const saFirst = saContainer.querySelector('.strategy-group');
+    if (saFirst) fillSaGroup(saFirst, saData[0]);
+    for (let i = 1; i < saData.length; i++) {
+      addStrategyAssocGroup(saData[i]);
+    }
+    refreshTimePriceActions();
+    refreshStrategyAssocActions();
+    onTypeChange();
+    document.getElementById('configModal').classList.add('show');
+  }
+
+  function confirmDelete(id, name) {
+    showConfirm('确认删除', '确定要删除广告位【<strong>' + name + '</strong>】吗？此操作为软删除，记录仍保留在后台。', function() {
+      const idx = adSlots.findIndex(a => a.id === id);
+      if (idx > -1) adSlots.splice(idx, 1);
+      renderTable();
+      showToast('已删除「' + name + '」');
+    });
+  }
+
+  // ============================================================
+  // 保存配置（含校验 + 分成比例二次确认）
+  // ============================================================
+  function saveConfig() {
+    // 执行基础校验
+    if (!validateConfig()) return;
+
+    // 广告分成比例校验
+    const splitRatioVal = document.getElementById('cfgSplitRatio').value;
+    if (splitRatioVal && (isNaN(splitRatioVal) || parseFloat(splitRatioVal) < 0 || parseFloat(splitRatioVal) > 100)) {
+      showToast('广告分成比例请输入0-100之间的数字');
+      return;
+    }
+    // 若编辑模式下清空分成比例，需二次确认
+    if (editingId && !splitRatioVal) {
+      const item = adSlots.find(a => a.id === editingId);
+      if (item && item.splitRatio) {
+        showConfirm('确认清空', '确定清空全局分成比例吗？清空后将恢复按原有优先级分成。', function() {
+          executeSave();
+        });
+        return;
+      }
+    }
+    executeSave();
+  }
+
+  // ============================================================
+  // 基础校验
+  // ============================================================
+  function validateConfig() {
+    const app = document.getElementById('cfgApp').value;
+    if (!app) { showToast('请选择应用包名'); return false; }
+    const type = document.getElementById('cfgType').value;
+    if (!type) { showToast('请选择业务类型'); return false; }
+    // 业务类型为「祈福」或未选择时隐藏图标/标题/副标题，不做必填校验；仅 福利 / 签到 显示并必填
+    if (type === '福利' || type === '签到') {
+      if (!currentIcon) { showToast('请上传广告任务图标'); return false; }
+      const name = document.getElementById('cfgName').value.trim();
+      if (!name) { showToast('请填写广告任务标题'); return false; }
+      const subtitle = document.getElementById('cfgSubtitle').value.trim();
+      if (!subtitle) { showToast('请填写广告任务副标题'); return false; }
+    }
+    const interval = document.getElementById('cfgInterval').value;
+    if (!interval) { showToast('请填写广告时间间隔'); return false; }
+    const userLimit = document.getElementById('cfgUserLimit').value;
+    if (userLimit === '') { showToast('请填写用户广告条数限制'); return false; }
+    const deviceLimit = document.getElementById('cfgDeviceLimit').value;
+    if (deviceLimit === '') { showToast('请填写设备广告条数限制'); return false; }
+    const sortVal = document.getElementById('cfgSort').value;
+    if (sortVal === '') { showToast('请填写排序'); return false; }
+    const verMin = document.getElementById('cfgVerMin').value;
+    if (verMin === '') { showToast('请填写最低版本'); return false; }
+    const verMax = document.getElementById('cfgVerMax').value;
+    if (verMax === '') { showToast('请填写最高版本'); return false; }
+    // 时段策略与关联广告位互斥：时段策略开启时校验时段策略组，否则校验关联广告位组
+    const tpModeOn = document.getElementById('tpEnable').checked;
+    if (tpModeOn) {
+      const tpGroups = document.querySelectorAll('#timePriceContainer .strategy-group');
+      if (tpGroups.length === 0) {
+        showToast('请至少配置一个时段策略'); return false;
+      }
+      for (let i = 0; i < tpGroups.length; i++) {
+        const rows = tpGroups[i].querySelectorAll('.tp-strategy-row');
+        if (rows.length === 0) {
+          showToast('时段策略第 ' + (i + 1) + ' 个时段请至少配置一条广告位'); return false;
+        }
+        for (let j = 0; j < rows.length; j++) {
+          if (!rows[j].querySelector('.tpStrategy').value) {
+            showToast('时段策略第 ' + (i + 1) + ' 个时段第 ' + (j + 1) + ' 条请选择广告位'); return false;
+          }
+        }
+      }
+    } else {
+      const saGroups = document.querySelectorAll('#strategyAssocContainer .strategy-group');
+      if (saGroups.length === 0 || !saGroups[0].querySelector('.saStrategy').value) {
+        showToast('请至少关联一个广告位'); return false;
+      }
+      for (let i = 0; i < saGroups.length; i++) {
+        if (!saGroups[i].querySelector('.saStrategy').value) {
+          showToast('关联广告位第 ' + (i + 1) + ' 组请选择广告位'); return false;
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // 执行保存（从表单读取所有值并写入数据）
+  // ============================================================
+  function executeSave() {
+    const name = document.getElementById('cfgName').value.trim();
+    const app = document.getElementById('cfgApp').value;
+    const type = document.getElementById('cfgType').value;
+    const subtitle = document.getElementById('cfgSubtitle').value.trim();
+    const interval = document.getElementById('cfgInterval').value;
+    const userLimit = document.getElementById('cfgUserLimit').value;
+    const deviceLimit = document.getElementById('cfgDeviceLimit').value;
+    const sort = parseInt(document.getElementById('cfgSort').value) || 0;
+    const verMin = document.getElementById('cfgVerMin').value;
+    const verMax = document.getElementById('cfgVerMax').value;
+    const splitRatioVal = document.getElementById('cfgSplitRatio').value;
+    const minCoinPriceVal = document.getElementById('cfgMinCoinPrice').value;
+    const fixedCoinVal = document.getElementById('cfgFixedCoin').value;
+    const rewardTypeVal = document.querySelector('input[name="rewardType"]:checked').value;
+    const effectTypeVal = document.getElementById('cfgEffectType').value;
+    const effectUsersVal = document.getElementById('cfgEffectUsers').value.trim();
+    const yangLineVal = document.getElementById('cfgYangLine').value;
+    const adRequirementVal = document.getElementById('cfgAdRequirement').value;
+    const effectChannelsVal = Array.from(selectedChannels);
+    const effectAgentsVal = Array.from(selectedAgents);
+
+    const tpModeOn = document.getElementById('tpEnable').checked;
+    // 收集时段策略组数据（时段策略开启时生效，每组含广告位与填充率）
+    const tpGroups = document.querySelectorAll('#timePriceContainer .strategy-group');
+    const timePrice = [];
+    if (tpModeOn) {
+      tpGroups.forEach(g => {
+        // 时段内可配置多条关联广告位，按行收集（行顺序 = 时段内瀑布流顺序）
+        const strategies = [];
+        g.querySelectorAll('.tp-strategy-row').forEach(r => {
+          strategies.push({
+            strategyName: r.querySelector('.tpStrategy').value,
+            fillRateOn: r.querySelector('.tpFillOn').checked,
+            tencent: r.querySelector('.tpTencent').value,
+            kuaishou: r.querySelector('.tpKuaishou').value,
+            baidu: r.querySelector('.tpBaidu').value,
+          });
+        });
+        timePrice.push({
+          timeStart: g.querySelector('.tpTimeStart').value,
+          timeEnd: g.querySelector('.tpTimeEnd').value,
+          ecpm: g.querySelector('.tpEcpm').value,
+          adLimit: g.querySelector('.tpAdLimit').value,
+          strategies: strategies,
+        });
+      });
+    }
+    // 收集关联广告位组数据（时段策略关闭时生效，瀑布流顺序 = 组顺序）
+    const saGroups = document.querySelectorAll('#strategyAssocContainer .strategy-group');
+    const strategyAssoc = [];
+    if (!tpModeOn) {
+      saGroups.forEach(g => {
+        strategyAssoc.push({
+          strategyName: g.querySelector('.saStrategy').value,
+          fillRateOn: g.querySelector('.saFillOn').checked,
+          tencent: g.querySelector('.saTencent').value,
+          kuaishou: g.querySelector('.saKuaishou').value,
+          baidu: g.querySelector('.saBaidu').value,
+        });
+      });
+    }
+
+    if (editingId) {
+      const item = adSlots.find(a => a.id === editingId);
+      if (item) {
+        item.name = name;
+        item.app = app;
+        item.type = type;
+        item.icon = currentIcon;
+        item.subtitle = subtitle;
+        item.interval = interval;
+        item.userLimit = userLimit;
+        item.deviceLimit = deviceLimit;
+        item.sort = sort;
+        item.verMin = verMin;
+        item.verMax = verMax;
+        item.timePrice = timePrice;
+        item.strategyAssoc = strategyAssoc;
+        item.useTimePrice = tpModeOn;
+        item.enabled = document.getElementById('configStatus').checked;
+        item.splitRatio = splitRatioVal;
+        item.minCoinPrice = minCoinPriceVal;
+        item.rewardType = rewardTypeVal;
+        item.fixedCoin = rewardTypeVal === 'fixed' ? fixedCoinVal : '';
+        item.effectType = effectTypeVal;
+        item.effectUsers = effectUsersVal;
+        item.effectChannels = effectChannelsVal;
+        item.effectAgents = effectAgentsVal;
+        item.yangLine = yangLineVal;
+        item.adRequirement = adRequirementVal;
+      }
+      showToast('已更新广告任务「' + name + '」');
+    } else {
+      adSlots.push({
+        id: nextId++,
+        app: app,
+        type: type,
+        typeCls: type === '祈福' ? 'tag-qifu' : 'tag-fuli',
+        icon: currentIcon || '📢',
+        name: name,
+        subtitle: subtitle,
+        interval: interval,
+        userLimit: userLimit,
+        deviceLimit: deviceLimit,
+        sort: sort,
+        verMin: verMin,
+        verMax: verMax,
+        timePrice: timePrice,
+        strategyAssoc: strategyAssoc,
+        useTimePrice: tpModeOn,
+        enabled: document.getElementById('configStatus').checked,
+        splitRatio: splitRatioVal,
+        minCoinPrice: minCoinPriceVal,
+        rewardType: rewardTypeVal,
+        fixedCoin: rewardTypeVal === 'fixed' ? fixedCoinVal : '',
+        effectType: effectTypeVal,
+        effectUsers: effectUsersVal,
+        effectChannels: effectChannelsVal,
+        effectAgents: effectAgentsVal,
+        yangLine: yangLineVal,
+        adRequirement: adRequirementVal,
+        created: new Date().toISOString().replace('T',' ').substr(0,19)
+      });
+      showToast('已新增广告任务「' + name + '」');
+    }
+
+    // 广告分成比例/固定金币状态提示
+    if (rewardTypeVal === 'fixed' && fixedCoinVal && parseInt(fixedCoinVal) > 0) {
+      showToast('保存成功，固定金币奖励已生效，每广告：' + fixedCoinVal + ' 金币');
+    } else if (splitRatioVal && parseFloat(splitRatioVal) > 0) {
+      showToast('保存成功，全局广告分成已生效，比例：' + parseFloat(splitRatioVal).toFixed(2) + '%');
+    }
+    renderTable();
+    document.getElementById('configModal').classList.remove('show');
+  }
+
+  // ============================================================
+  // Status Toggle
+  // ============================================================
+  function toggleStatus(event, id, name) {
+    event.stopPropagation();
+    const item = adSlots.find(a => a.id === id);
+    if (!item) return;
+    const nextState = !item.enabled;
+    const action = nextState ? '启用' : '禁用';
+    showConfirm('确认操作', '确定要<strong>' + action + '</strong>广告位【' + name + '】吗？' + (action === '禁用' ? '禁用后客户端将不再请求该广告位。' : ''), function() {
+      item.enabled = nextState;
+      renderTable();
+      showToast('已' + action + '广告位「' + name + '」');
+    });
+  }
+
+  // ============================================================
+  // 时段策略组（每个时段可配置多条关联广告位，时段内按行序瀑布流）
+  // ============================================================
+  let tpCounter = 1;
+
+  function addTimePriceGroup(data) {
+    tpCounter++;
+    const div = document.createElement('div');
+    div.className = 'strategy-group';
+    div.id = 'tp' + tpCounter;
+    div.innerHTML = `
+      <div class="strategy-group-header">
+        <div>
+          <span class="label">时段 ${tpCounter}</span>
+        </div>
+        <button class="btn btn-sm btn-link danger del-btn" onclick="removeTimePriceGroup('tp${tpCounter}')">✕ 删除</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>固定生效时段</label>
+          <div class="time-range">
+            <input type="time" class="tpTimeStart">
+            <span class="sep">—</span>
+            <input type="time" class="tpTimeEnd">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>
+            eCPM
+            <span class="help-icon">?
+              <span class="help-tooltip" style="white-space:nowrap;">海量金币广告位需连续五条广告的 eCPM 均大于设置时生效</span>
+            </span>
+          </label>
+          <input type="number" step="0.01" class="tpEcpm" placeholder="请输入">
+        </div>
+        <div class="form-group">
+          <label>生效时段广告条数</label>
+          <input type="number" class="tpAdLimit" placeholder="时段内单设备独立上限">
+        </div>
+      </div>
+      <div class="tp-strategies"></div>
+      <div class="strategy-add-wrap">
+        <button class="btn btn-default btn-sm" onclick="addTpStrategy('tp${tpCounter}')">＋ 添加广告位</button>
+      </div>`;
+    document.getElementById('timePriceContainer').appendChild(div);
+    if (data) {
+      div.querySelector('.tpTimeStart').value = data.timeStart || '';
+      div.querySelector('.tpTimeEnd').value = data.timeEnd || '';
+      div.querySelector('.tpEcpm').value = data.ecpm || '';
+      div.querySelector('.tpAdLimit').value = data.adLimit || '';
+    }
+    // 每个时段可配置多条关联广告位，按 data.strategies 逐条重建
+    const strategies = (data && data.strategies && data.strategies.length) ? data.strategies : [null];
+    strategies.forEach(s => addTpStrategy(div.id, s));
+    refreshTimePriceLabels();
+    refreshTimePriceActions();
+    if (!data) showToast('已添加时段');
+  }
+
+  // 时段内新增一条关联广告位（广告位下拉 + 填充率要求 + 腾讯/快手/百度填充率）
+  function addTpStrategy(groupId, data) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    const container = group.querySelector('.tp-strategies');
+    const div = document.createElement('div');
+    div.className = 'tp-strategy-row';
+    div.innerHTML = `
+      <div class="form-group tp-strategy-select">
+        <label>广告位 <span class="required">*</span></label>
+        <select class="tpStrategy"><option value="">请选择</option></select>
+      </div>
+      <div class="form-group">
+        <label>填充率要求</label>
+        <div class="fill-rate-row">
+          <label class="switch"><input type="checkbox" class="tpFillOn"><span class="slider"></span></label>
+          <span class="label-text tpFillText">已关闭</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>腾讯填充率（%）</label>
+        <div class="pct-wrap"><input type="text" class="tpTencent" placeholder="请输入"><span class="pct-suffix">%</span></div>
+      </div>
+      <div class="form-group">
+        <label>快手填充率（%）</label>
+        <div class="pct-wrap"><input type="text" class="tpKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div>
+      </div>
+      <div class="form-group">
+        <label>百度填充率（%）</label>
+        <div class="pct-wrap"><input type="text" class="tpBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div>
+      </div>
+      <button class="btn-link tp-move-up" onclick="moveTpStrategy('${groupId}', this, -1)">↑ 上移</button>
+      <button class="btn-link tp-move-down" onclick="moveTpStrategy('${groupId}', this, 1)">↓ 下移</button>
+      <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('${groupId}', this)">✕ 删除</button>`;
+    container.appendChild(div);
+    if (data) {
+      div.querySelector('.tpFillOn').checked = !!data.fillRateOn;
+      div.querySelector('.tpFillText').textContent = data.fillRateOn ? '已开启' : '已关闭';
+      div.querySelector('.tpTencent').value = data.tencent || '';
+      div.querySelector('.tpKuaishou').value = data.kuaishou || '';
+      div.querySelector('.tpBaidu').value = data.baidu || '';
+    }
+    // 先填充广告位下拉选项，再回填选中值（新行初始只有占位选项）
+    refreshStrategyOptions();
+    if (data) {
+      const ok = data.strategyName && strategiesData.some(s => s.strategyName === data.strategyName);
+      div.querySelector('.tpStrategy').value = ok ? data.strategyName : '';
+    }
+    refreshTpStrategyActions(group);
+    return div;
+  }
+
+  // 删除时段内某条关联广告位（每个时段至少保留一条）
+  function removeTpStrategy(groupId, btn) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    const rows = group.querySelectorAll('.tp-strategy-row');
+    if (rows.length <= 1) {
+      showToast('每个时段至少需配置一条广告位');
+      return;
+    }
+    btn.closest('.tp-strategy-row').remove();
+    refreshTpStrategyActions(group);
+  }
+
+  // 时段内广告位上移/下移调整排序（行顺序 = 时段内瀑布流顺序，越靠上优先级越高）
+  function moveTpStrategy(groupId, btn, dir) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    const container = group.querySelector('.tp-strategies');
+    const rows = Array.from(container.querySelectorAll('.tp-strategy-row'));
+    const el = btn.closest('.tp-strategy-row');
+    const idx = rows.indexOf(el);
+    const target = idx + dir;
+    if (target < 0 || target >= rows.length) return;
+    if (dir < 0) container.insertBefore(el, rows[target]);
+    else container.insertBefore(el, rows[target].nextSibling);
+    refreshTpStrategyActions(group);
+  }
+
+  // 仅一条时禁用该时段策略行的删除/上移/下移按钮；首行上移、末行下移禁用
+  function refreshTpStrategyActions(group) {
+    const rows = group.querySelectorAll('.tp-strategy-row');
+    const show = rows.length > 1;
+    rows.forEach((r, i) => {
+      const del = r.querySelector('.tp-del-strategy');
+      if (del) del.disabled = !show;
+      const up = r.querySelector('.tp-move-up');
+      const down = r.querySelector('.tp-move-down');
+      if (up) up.disabled = !show || i === 0;
+      if (down) down.disabled = !show || i === rows.length - 1;
+    });
+  }
+
+  function removeTimePriceGroup(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const remaining = document.querySelectorAll('#timePriceContainer .strategy-group').length;
+    if (remaining <= 1) {
+      showToast('至少需保留一组时段策略');
+      return;
+    }
+    const label = el.querySelector('.label').textContent.trim();
+    el.remove();
+    refreshTimePriceLabels();
+    refreshTimePriceActions();
+    showToast('已移除' + label);
+  }
+
+  // 按当前展示顺序重排时段策略编号
+  function refreshTimePriceLabels() {
+    const groups = document.querySelectorAll('#timePriceContainer .strategy-group');
+    groups.forEach((g, i) => {
+      const label = g.querySelector('.label');
+      if (label) label.textContent = '时段 ' + (i + 1) + ' ';
+    });
+  }
+
+  // 仅一组时禁用删除，多组时全部可删
+  function refreshTimePriceActions() {
+    const groups = document.querySelectorAll('#timePriceContainer .strategy-group');
+    const show = groups.length > 1;
+    groups.forEach((g) => {
+      const del = g.querySelector('.del-btn');
+      if (del) del.disabled = !show;
+    });
+  }
+
+  // ============================================================
+  // 关联广告位组
+  // ============================================================
+  let saCounter = 1;
+
+  function addStrategyAssocGroup(data) {
+    saCounter++;
+    const div = document.createElement('div');
+    div.className = 'strategy-group';
+    div.id = 'sa' + saCounter;
+    div.innerHTML = `
+      <div class="strategy-group-header">
+        <div>
+          <span class="label">广告位 ${saCounter}</span>
+        </div>
+        <div class="strategy-group-actions">
+          <button class="btn-link move-up" onclick="moveStrategyAssoc('sa${saCounter}',-1)">↑ 上移</button>
+          <button class="btn-link move-down" onclick="moveStrategyAssoc('sa${saCounter}',1)">↓ 下移</button>
+          <button class="btn btn-sm btn-link danger del-btn" onclick="removeStrategyAssocGroup('sa${saCounter}')">✕ 删除</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>广告位 <span class="required">*</span></label>
+          <select class="saStrategy">
+            <option value="">请选择</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>填充率要求</label>
+          <div class="fill-rate-row">
+            <label class="switch"><input type="checkbox" class="saFillOn"><span class="slider"></span></label>
+            <span class="label-text saFillText">已关闭</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>腾讯填充率（%）</label>
+          <div class="pct-wrap">
+            <input type="text" class="saTencent" placeholder="请输入">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>快手填充率（%）</label>
+          <div class="pct-wrap">
+            <input type="text" class="saKuaishou" placeholder="请输入">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>百度填充率（%）</label>
+          <div class="pct-wrap">
+            <input type="text" class="saBaidu" placeholder="请输入">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('strategyAssocContainer').appendChild(div);
+    if (data) fillSaGroup(div, data);
+    refreshStrategyOptions();
+    refreshStrategyAssocLabels();
+    refreshStrategyAssocActions();
+    if (!data) showToast('已添加广告位组');
+  }
+
+  function removeStrategyAssocGroup(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const remaining = document.querySelectorAll('#strategyAssocContainer .strategy-group').length;
+    if (remaining <= 1) {
+      showToast('至少需保留一组关联广告位');
+      return;
+    }
+    el.remove();
+    refreshStrategyAssocLabels();
+    refreshStrategyAssocActions();
+    showToast('已移除广告位组');
+  }
+
+  function refreshStrategyAssocLabels() {
+    const groups = document.querySelectorAll('#strategyAssocContainer .strategy-group');
+    groups.forEach((g, i) => {
+      const label = g.querySelector('.label');
+      if (label) label.textContent = '广告位 ' + (i + 1) + ' ';
+    });
+  }
+
+  // 关联广告位上移/下移调整瀑布流顺序（组顺序 = 请求顺序，越靠上优先级越高）
+  function moveStrategyAssoc(id, dir) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const container = document.getElementById('strategyAssocContainer');
+    const groups = Array.from(container.querySelectorAll('.strategy-group'));
+    const idx = groups.indexOf(el);
+    const target = idx + dir;
+    if (target < 0 || target >= groups.length) return;
+    if (dir < 0) container.insertBefore(el, groups[target]);
+    else container.insertBefore(el, groups[target].nextSibling);
+    refreshStrategyAssocLabels();
+    refreshStrategyAssocActions();
+  }
+
+  function refreshStrategyAssocActions() {
+    const groups = document.querySelectorAll('#strategyAssocContainer .strategy-group');
+    const show = groups.length > 1;
+    groups.forEach((g, i) => {
+      const del = g.querySelector('.del-btn');
+      if (del) del.disabled = !show;
+      const up = g.querySelector('.move-up');
+      const down = g.querySelector('.move-down');
+      if (up) up.disabled = !show || i === 0;
+      if (down) down.disabled = !show || i === groups.length - 1;
+    });
+  }
+
+  // 填充率要求开关文案（事件委托）
+  document.getElementById('strategyAssocContainer').addEventListener('change', function(e) {
+    if (e.target.classList.contains('saFillOn')) {
+      e.target.closest('.strategy-group').querySelector('.saFillText').textContent = e.target.checked ? '已开启' : '已关闭';
+    }
+  });
+  document.getElementById('timePriceContainer').addEventListener('change', function(e) {
+    if (e.target.classList.contains('tpFillOn')) {
+      e.target.closest('.tp-strategy-row').querySelector('.tpFillText').textContent = e.target.checked ? '已开启' : '已关闭';
+    }
+  });
+
+  // ============================================================
+  // 业务类型联动（广告位下拉展示全部广告位）
+  // ============================================================
+  function refreshStrategyOptions() {
+    const opts = strategiesData
+      .map(s => '<option value="' + s.strategyName + '">' + s.strategyName + '</option>').join('');
+    document.querySelectorAll('.saStrategy').forEach(sel => {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">请选择</option>' + opts;
+      if (cur && strategiesData.some(s => s.strategyName === cur)) sel.value = cur;
+    });
+    document.querySelectorAll('.tpStrategy').forEach(sel => {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">请选择</option>' + opts;
+      if (cur && strategiesData.some(s => s.strategyName === cur)) sel.value = cur;
+    });
+  }
+
+  // 业务类型未选择或为「祈福」时隐藏 图标 / 标题 / 副标题，仅 福利 / 签到 显示
+  function onTypeChange() {
+    const type = document.getElementById('cfgType').value;
+    const show = type === '福利' || type === '签到';
+    document.getElementById('rowIcon').style.display = show ? '' : 'none';
+    document.getElementById('rowName').style.display = show ? '' : 'none';
+    document.getElementById('rowSubtitle').style.display = show ? '' : 'none';
+  }
+
+  // 时段策略与关联广告位互斥：时段策略开启时展示时段策略组，隐藏关联广告位区
+  function refreshTpMode() {
+    const on = document.getElementById('tpEnable').checked;
+    document.getElementById('timePriceContainer').style.display = on ? '' : 'none';
+    document.getElementById('timePriceAddBtn').style.display = on ? '' : 'none';
+    document.getElementById('strategyAssocSection').style.display = on ? 'none' : '';
+    document.getElementById('strategyAssocAddBtn').style.display = on ? 'none' : '';
+  }
+
+  // ============================================================
+  // 生效类型 / 渠道生效 / 代理生效
+  // ============================================================
+  const allChannels = ['应用宝', '华为应用市场', '小米商店', 'OPPO软件商店', 'vivo应用商店', '360手机助手', '豌豆荚', '魅族应用商店', '三星应用商店', '联想乐商店'];
+  const allAgents = [
+    { id: 1001, name: '晨光传媒', channel: '应用宝', phone: '13800000001', created: '2026-07-20 10:00:00' },
+    { id: 1002, name: '星空推广', channel: '华为应用市场', phone: '13800000002', created: '2026-07-20 10:05:00' },
+    { id: 1003, name: '飞跃网络', channel: '小米商店', phone: '13800000003', created: '2026-07-21 09:30:00' },
+    { id: 1004, name: '百川营销', channel: 'OPPO软件商店', phone: '13800000004', created: '2026-07-21 14:20:00' },
+    { id: 1005, name: '聚量广告', channel: 'vivo应用商店', phone: '13800000005', created: '2026-07-22 11:45:00' },
+    { id: 1006, name: '青云传媒', channel: '360手机助手', phone: '13800000006', created: '2026-07-22 16:10:00' },
+    { id: 1007, name: '新锐互动', channel: '豌豆荚', phone: '13800000007', created: '2026-07-23 10:00:00' },
+    { id: 1008, name: '宏图推广', channel: '应用宝', phone: '13800000008', created: '2026-07-23 15:30:00' },
+    { id: 1009, name: '智点传媒', channel: '华为应用市场', phone: '13800000009', created: '2026-07-24 09:00:00' },
+    { id: 1010, name: '天行营销', channel: '小米商店', phone: '13800000010', created: '2026-07-24 17:40:00' },
+  ];
+  const selectedChannels = new Set();
+  const selectedAgents = new Set(); // 存代理 ID
+  let agentWorkingSet = new Set();
+
+  function applyEffectType() {
+    const val = document.getElementById('cfgEffectType').value;
+    document.getElementById('channelEffectBlock').style.display = val === 'channel' ? '' : 'none';
+    document.getElementById('agentEffectBlock').style.display = val === 'agent' ? '' : 'none';
+  }
+
+  // ---- 渠道生效设置：可搜索多选 ----
+  function renderChannelTags() {
+    const box = document.getElementById('channelSelectedTags');
+    box.innerHTML = Array.from(selectedChannels).map(c =>
+      '<span class="ms-tag">' + c + '<span class="ms-close" onclick="removeChannel(\'' + c + '\')">✕</span></span>'
+    ).join('');
+  }
+
+  function renderChannelDropdown(keyword) {
+    const kw = (keyword || '').trim();
+    const dropdown = document.getElementById('channelDropdown');
+    const list = allChannels.filter(c => !kw || c.indexOf(kw) > -1);
+    if (list.length === 0) {
+      dropdown.innerHTML = '<div class="ms-empty">无匹配渠道</div>';
+    } else {
+      dropdown.innerHTML = list.map(c =>
+        '<div class="ms-option' + (selectedChannels.has(c) ? ' selected' : '') + '" onclick="toggleChannel(\'' + c + '\')">' + c + '</div>'
+      ).join('');
+    }
+    dropdown.classList.add('show');
+  }
+
+  function toggleChannel(ch) {
+    if (selectedChannels.has(ch)) selectedChannels.delete(ch);
+    else selectedChannels.add(ch);
+    renderChannelTags();
+    renderChannelDropdown(document.getElementById('channelSearchInput').value);
+  }
+
+  function removeChannel(ch) {
+    selectedChannels.delete(ch);
+    renderChannelTags();
+    renderChannelDropdown(document.getElementById('channelSearchInput').value);
+  }
+
+  (function initChannelSelect() {
+    const ms = document.getElementById('channelMultiSelect');
+    const search = document.getElementById('channelSearchInput');
+    const dropdown = document.getElementById('channelDropdown');
+    ms.addEventListener('click', function() {
+      dropdown.classList.add('show');
+      search.focus();
+    });
+    search.addEventListener('focus', function() { renderChannelDropdown(this.value); });
+    search.addEventListener('input', function() { renderChannelDropdown(this.value); });
+    document.addEventListener('click', function(e) {
+      if (!ms.contains(e.target)) dropdown.classList.remove('show');
+    });
+  })();
+
+  // ---- 代理生效设置：选择代理弹窗 ----
+  function openAgentModal() {
+    const sel = document.getElementById('agentSearchChannel');
+    sel.innerHTML = '<option value="">全部渠道</option>' + allChannels.map(c => '<option>' + c + '</option>').join('');
+    document.getElementById('agentSearchPhone').value = '';
+    agentWorkingSet = new Set(selectedAgents);
+    renderAgentList();
+    document.getElementById('agentModal').classList.add('show');
+  }
+
+  function closeAgentModal() {
+    document.getElementById('agentModal').classList.remove('show');
+  }
+
+  function renderAgentList() {
+    const channel = document.getElementById('agentSearchChannel').value;
+    const phone = document.getElementById('agentSearchPhone').value.trim();
+    const list = allAgents.filter(a => {
+      if (channel && a.channel !== channel) return false;
+      if (phone && a.phone.indexOf(phone) === -1) return false;
+      return true;
+    });
+    const container = document.getElementById('agentList');
+    if (list.length === 0) {
+      container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px 0;color:#bfbfbf;">无匹配代理</td></tr>';
+    } else {
+      container.innerHTML = list.map(a => {
+        const checked = agentWorkingSet.has(a.id);
+        return '<tr class="agent-row' + (checked ? ' checked' : '') + '" onclick="toggleAgentRow(' + a.id + ',event)">' +
+          '<td><input type="checkbox" class="agent-cb" value="' + a.id + '" ' + (checked ? 'checked' : '') + ' onclick="event.stopPropagation()"></td>' +
+          '<td>' + a.id + '</td>' +
+          '<td>' + a.channel + '</td>' +
+          '<td>' + a.name + '</td>' +
+          '<td>' + a.phone + '</td>' +
+          '<td>' + a.created + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+    updateAgentCount();
+    syncSelectAll();
+  }
+
+  function toggleAgentRow(id, event) {
+    if (event.target.tagName === 'INPUT' && event.target.type === 'checkbox') return;
+    const cb = document.querySelector('#agentList input[value="' + id + '"]');
+    if (cb) cb.click();
+  }
+
+  function updateAgentCount() {
+    document.getElementById('agentSelectCount').textContent = '已选 ' + agentWorkingSet.size + ' 个代理';
+  }
+
+  function syncSelectAll() {
+    const selAll = document.getElementById('agentSelectAll');
+    const rows = document.querySelectorAll('#agentList tr.agent-row');
+    if (rows.length === 0) {
+      selAll.checked = false;
+      selAll.indeterminate = false;
+      return;
+    }
+    let checkedCount = 0;
+    rows.forEach(row => { if (row.querySelector('.agent-cb').checked) checkedCount++; });
+    selAll.checked = checkedCount === rows.length;
+    selAll.indeterminate = checkedCount > 0 && checkedCount < rows.length;
+  }
+
+  function resetAgentSearch() {
+    document.getElementById('agentSearchChannel').value = '';
+    document.getElementById('agentSearchPhone').value = '';
+    renderAgentList();
+  }
+
+  document.getElementById('agentList').addEventListener('change', function(e) {
+    if (!e.target.classList.contains('agent-cb')) return;
+    const id = parseInt(e.target.value);
+    const row = e.target.closest('tr');
+    if (e.target.checked) {
+      agentWorkingSet.add(id);
+      if (row) row.classList.add('checked');
+    } else {
+      agentWorkingSet.delete(id);
+      if (row) row.classList.remove('checked');
+    }
+    updateAgentCount();
+    syncSelectAll();
+  });
+
+  document.getElementById('agentSelectAll').addEventListener('change', function() {
+    const checkAll = this.checked;
+    document.querySelectorAll('#agentList tr.agent-row').forEach(row => {
+      const cb = row.querySelector('.agent-cb');
+      const id = parseInt(cb.value);
+      if (checkAll) { agentWorkingSet.add(id); cb.checked = true; row.classList.add('checked'); }
+      else { agentWorkingSet.delete(id); cb.checked = false; row.classList.remove('checked'); }
+    });
+    this.indeterminate = false;
+    updateAgentCount();
+  });
+
+  function confirmAgentSelect() {
+    selectedAgents.clear();
+    agentWorkingSet.forEach(id => selectedAgents.add(id));
+    renderAgentBlock();
+    document.getElementById('agentModal').classList.remove('show');
+    showToast('已选择 ' + selectedAgents.size + ' 个代理');
+  }
+
+  function renderAgentBlock() {
+    const box = document.getElementById('agentSelectedTags');
+    box.innerHTML = Array.from(selectedAgents).map(id => {
+      const agent = allAgents.find(a => a.id === id);
+      const name = agent ? agent.name : String(id);
+      return '<span class="ms-tag">' + name + '<span class="ms-close" onclick="removeAgent(' + id + ')">✕</span></span>';
+    }).join('');
+  }
+
+  function removeAgent(id) {
+    selectedAgents.delete(id);
+    renderAgentBlock();
+  }
+
+  // ============================================================
+  // Confirm Modal
+  // ============================================================
+  let confirmCallback = null;
+
+  function showConfirm(title, msg, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').innerHTML = msg;
+    document.getElementById('confirmModal').classList.add('show');
+    confirmCallback = callback || null;
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirmModal').classList.remove('show');
+    if (confirmCallback) {
+      const cb = confirmCallback;
+      confirmCallback = null;
+      cb();
+    }
+  }
+
+  document.getElementById('confirmModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      document.getElementById('confirmModal').classList.remove('show');
+      confirmCallback = null;
+    }
+  });
+
+  // ============================================================
+  // Toast
+  // ============================================================
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => { t.style.display = 'none'; }, 300); }, 2000);
+  }
+
+  // ============================================================
+  // Keyboard
+  // ============================================================
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      if (document.getElementById('confirmModal').classList.contains('show')) {
+        closeConfirm();
+      } else if (document.getElementById('agentModal').classList.contains('show')) {
+        closeAgentModal();
+      } else if (document.getElementById('configModal').classList.contains('show')) {
+        closeConfigModal();
+      }
+    }
+  });
+
+  document.getElementById('agentModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAgentModal();
+  });
+
+  // 配置弹窗状态开关文字切换
+  document.getElementById('configStatus').addEventListener('change', function() {
+    document.getElementById('configStatusText').textContent = this.checked ? '已启用' : '已禁用';
+  });
+</script>
+</body>
+</html>

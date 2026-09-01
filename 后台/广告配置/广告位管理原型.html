@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>广告位管理</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    font-size: 14px; color: #262626; background: #f6f7f9; overflow: hidden;
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* ============================================================
+     左侧边栏
+     ============================================================ */
+  .sidebar {
+    width: 200px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
+    transition: width 0.2s;
+  }
+  .sidebar.collapsed { width: 64px; }
+  .sidebar-logo {
+    height: 48px; background: #00152a; display: flex; align-items: center; padding: 0 16px; flex-shrink: 0;
+  }
+  .sidebar-logo .logo-text { color: #fff; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+  .sidebar.collapsed .sidebar-logo .logo-text { font-size: 12px; }
+  .sidebar-menu { flex: 1; background: #00152a; overflow-y: auto; }
+  .sidebar-menu .menu-group { border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-group-header {
+    height: 44px; display: flex; align-items: center; padding: 0 16px; cursor: pointer;
+    color: rgba(255,255,255,0.75); font-size: 14px; gap: 8px; user-select: none;
+    transition: background 0.15s;
+  }
+  .sidebar-menu .menu-group-header:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-group-header .arrow {
+    font-size: 10px; transition: transform 0.2s; color: rgba(255,255,255,0.35);
+  }
+  .sidebar-menu .menu-group-header .arrow.open { transform: rotate(90deg); }
+  .sidebar-menu .menu-sub { overflow: hidden; max-height: 0; transition: max-height 0.2s; }
+  .sidebar-menu .menu-sub.open { max-height: 200px; }
+  .sidebar-menu .menu-sub .menu-item {
+    height: 40px; display: flex; align-items: center; padding: 0 16px 0 40px;
+    color: rgba(255,255,255,0.65); cursor: pointer; font-size: 13px; transition: background 0.15s;
+  }
+  .sidebar-menu .menu-sub .menu-item a { color: inherit; text-decoration: none; display: block; width: 100%; }
+  .sidebar-menu .menu-sub .menu-item:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-menu .menu-sub .menu-item.active { background: #1890ff; color: #fff; font-weight: 500; }
+  .sidebar.collapsed .menu-group-header span:not(.arrow) { display: none; }
+  .sidebar.collapsed .menu-sub { display: none; }
+  .sidebar.collapsed .arrow { display: none; }
+  .sidebar-toggle {
+    height: 36px; background: #00152a; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: rgba(255,255,255,0.4); font-size: 12px; flex-shrink: 0;
+  }
+  .sidebar-toggle:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+
+  /* ============================================================
+     右侧内容区
+     ============================================================ */
+  .content-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 48px; background: #fff; display: flex; align-items: center; padding: 0 20px;
+    flex-shrink: 0; border-bottom: 1px solid #f0f0f0; gap: 8px;
+  }
+  .topbar .breadcrumb { font-size: 14px; color: #8c8c8c; }
+  .topbar .breadcrumb .sep { margin: 0 4px; color: #bfbfbf; }
+  .topbar .breadcrumb .current { color: #262626; font-weight: 500; }
+  .topbar .spacer { flex: 1; }
+  .tab-bar {
+    height: 36px; background: #f6f7f9; display: flex; align-items: center; padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .tab-bar .tab {
+    padding: 4px 12px; font-size: 13px; color: #1890ff; background: #e6f7ff;
+    border-radius: 4px; cursor: default;
+  }
+  .main { flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ---- 卡片 ---- */
+  .card { background: #fff; border-radius: 4px; }
+
+  /* ---- 筛选栏 ---- */
+  .filter-bar { padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .filter-bar label { font-size: 14px; color: #595959; white-space: nowrap; }
+  .filter-bar select, .filter-bar input[type="text"] {
+    height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px;
+    font-size: 14px; color: #262626; background: #fff; outline: none;
+  }
+  .filter-bar select:focus, .filter-bar input[type="text"]:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .filter-bar select { min-width: 130px; }
+
+  /* ---- 按钮 ---- */
+  .btn {
+    height: 32px; padding: 0 16px; border-radius: 4px; font-size: 14px; cursor: pointer;
+    border: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .btn-primary { background: #1890ff; color: #fff; }
+  .btn-primary:hover { background: #40a9ff; }
+  .btn-default { background: #fff; color: #595959; border: 1px solid #d9d9d9; }
+  .btn-default:hover { color: #1890ff; border-color: #1890ff; }
+  .btn-sm { height: 28px; padding: 0 12px; font-size: 12px; }
+  .btn-link { background: none; border: none; color: #1890ff; cursor: pointer; padding: 0 4px; font-size: 14px; }
+  .btn-link:hover { color: #40a9ff; }
+  .btn-link.danger { color: #ff4d4f; }
+  .btn-link.danger:hover { color: #ff7875; }
+  .filter-bar .spacer { flex: 1; }
+
+  /* ---- 表格 ---- */
+  .table-card { background: #fff; border-radius: 4px; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+  thead th {
+    background: #fafafa; padding: 10px 12px; text-align: left; font-weight: 500;
+    color: #262626; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0;
+  }
+  thead th:last-child { border-right: none; }
+  tbody td {
+    padding: 12px; border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0; height: 48px;
+  }
+  tbody td:last-child { border-right: none; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: #f0f7ff !important; }
+  tbody tr.disabled-row { opacity: 0.55; }
+
+  /* ---- 表格内元素 ---- */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+  .tag-alliance { background: #f0f5ff; color: #1890ff; }
+  .tag-platform { background: #fff7e6; color: #d46b08; }
+  .tag-on { background: #f6ffed; color: #389e0d; }
+  .tag-off { background: #fafafa; color: #8c8c8c; }
+  .slot-name { font-weight: 500; color: #262626; }
+  .secret-text { color: #8c8c8c; font-size: 13px; }
+  .num-text { color: #d46b08; font-weight: 500; }
+
+  /* ---- Switch ---- */
+  .switch { position: relative; display: inline-block; width: 44px; height: 22px; cursor: pointer; vertical-align: middle; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; inset: 0; background: #d9d9d9; border-radius: 22px; transition: all 0.2s; }
+  .switch .slider::before {
+    content: ''; position: absolute; width: 18px; height: 18px; left: 2px; bottom: 2px;
+    background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .switch input:checked + .slider { background: #1890ff; }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+
+  /* ---- 分页 ---- */
+  .pager {
+    padding: 12px 20px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #595959;
+    border-top: 1px solid #f0f0f0;
+  }
+  .pager .total { margin-right: auto; }
+  .pager .page-size { height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 14px; }
+  .pager .page-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid #d9d9d9;
+    background: #fff; font-size: 14px;
+  }
+  .pager .page-num.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+  .pager .page-num:hover:not(.active):not(.disabled) { border-color: #1890ff; color: #1890ff; }
+  .pager .page-num.disabled { color: #bfbfbf; cursor: not-allowed; }
+
+  /* ============================================================
+     弹窗（通用）
+     ============================================================ */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45); z-index: 2000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-overlay.confirm-overlay { z-index: 2100; }
+  .modal {
+    background: #fff; border-radius: 6px; width: 520px; max-width: 90vw;
+    max-height: 80vh; display: flex; flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+  .modal.confirm-modal { width: 440px; }
+  .modal.config-modal { width: 760px; }
+  .modal .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .modal .modal-header .title { font-size: 16px; font-weight: 500; color: #262626; }
+  .modal .modal-close {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #bfbfbf; font-size: 16px; border-radius: 4px;
+  }
+  .modal .modal-close:hover { background: #f5f5f5; color: #595959; }
+  .modal .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .modal .modal-footer {
+    padding: 12px 20px; border-top: 1px solid #f0f0f0;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .modal .modal-footer .spacer { flex: 1; }
+
+  /* ---- 确认弹窗 ---- */
+  .confirm-icon { text-align: center; font-size: 48px; margin-bottom: 12px; }
+  .confirm-msg { font-size: 14px; color: #595959; text-align: center; line-height: 1.6; }
+  .confirm-msg strong { color: #262626; }
+
+  /* ============================================================
+     配置表单（弹窗内）
+     ============================================================ */
+  .config-section { margin-bottom: 24px; }
+  .config-section:last-child { margin-bottom: 0; }
+  .config-section-title {
+    font-size: 15px; font-weight: 500; color: #262626;
+    padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 14px;
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+  .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 14px; font-weight: 500; color: #262626; display: inline-flex; align-items: center; gap: 4px; }
+  .form-group label .required { color: #ff4d4f; margin-left: 2px; }
+  .form-group input, .form-group select {
+    height: 32px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 4px;
+    font-size: 14px; outline: none; background: #fff; color: #262626;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .form-group .pct-wrap { position: relative; }
+  .form-group .pct-wrap input { width: 100%; padding-right: 28px; }
+  .form-group .pct-wrap .pct-suffix { position: absolute; right: 8px; top: 0; bottom: 0; display: flex; align-items: center; color: #bfbfbf; font-size: 13px; }
+  .switch-row { display: flex; align-items: center; gap: 10px; }
+  .switch-row .label-text { font-size: 14px; color: #595959; }
+
+  .status-row { display: flex; align-items: center; gap: 10px; padding: 4px 0 0; }
+  .status-row .status-label { font-size: 15px; font-weight: 500; color: #262626; }
+
+  /* ---- Toast ---- */
+  #toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    background: #262626; color: #fff; padding: 10px 24px; border-radius: 4px;
+    font-size: 14px; z-index: 3000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================================================
+       左侧边栏
+       ============================================================ -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-text">本腾曦网络</span>
+    </div>
+    <div class="sidebar-menu">
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-ad')">
+          <span>📢</span>
+          <span>IAA管理</span>
+          <span class="arrow open" id="arrow-menu-ad">▶</span>
+        </div>
+        <div class="menu-sub open" id="menu-ad">
+          <div class="menu-item active"><a href="广告位管理原型.html" style="color:inherit;text-decoration:none;">广告位管理</a></div>
+          <div class="menu-item"><a href="广告任务策略原型.html" style="color:inherit;text-decoration:none;">广告任务策略</a></div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-dashboard')">
+          <span>📊</span>
+          <span>数据看板</span>
+          <span class="arrow" id="arrow-menu-dashboard">▶</span>
+        </div>
+        <div class="menu-sub" id="menu-dashboard">
+          <div class="menu-item">代理业务报表</div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-header" onclick="toggleMenu('menu-system')">
+          <span>⚙</span>
+          <span>系统设置</span>
+          <span class="arrow" id="arrow-menu-system">▶</span>
+        </div>
+        <div class="menu-sub" id="menu-system">
+          <div class="menu-item">系统设置</div>
+          <div class="menu-item">用户管理</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-toggle" onclick="toggleSidebar()" title="折叠/展开侧边栏">◀</div>
+  </div>
+
+  <!-- ============================================================
+       右侧内容区
+       ============================================================ -->
+  <div class="content-wrap">
+    <div class="topbar">
+      <span class="breadcrumb">IAA管理 <span class="sep">/</span> <span class="current">广告位管理</span></span>
+      <span class="spacer"></span>
+    </div>
+    <div class="tab-bar">
+      <span class="tab">广告位管理</span>
+    </div>
+    <div class="main">
+
+      <!-- 筛选栏 -->
+      <div class="card filter-bar">
+        <label>应用包名</label>
+        <select id="fApp">
+          <option>全部</option>
+          <option>极速版</option>
+          <option>标准版</option>
+          <option>国际版</option>
+        </select>
+        <label>系统类型</label>
+        <select id="fPlatform">
+          <option>全部</option>
+          <option>Android</option>
+          <option>IOS</option>
+        </select>
+        <label>广告联盟</label>
+        <select id="fAlliance">
+          <option>全部</option>
+          <option>AdMob</option>
+          <option>Facebook</option>
+          <option>腾讯广告</option>
+          <option>快手联盟</option>
+          <option>百度联盟</option>
+        </select>
+        <label>广告位名称</label>
+        <input type="text" id="fKeyword" placeholder="请输入广告位名称" style="width:180px;">
+        <label>状态</label>
+        <select id="fStatus">
+          <option>全部</option>
+          <option>已启用</option>
+          <option>已禁用</option>
+        </select>
+        <button class="btn btn-primary" onclick="applyFilter()">🔍 查询</button>
+        <button class="btn btn-default" onclick="resetFilter()">↻ 重置</button>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" onclick="openAddModal()">＋ 新增广告位</button>
+      </div>
+
+      <!-- 表格 -->
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;">编号</th>
+                <th>广告位名称</th>
+                <th>应用包名</th>
+                <th>系统类型</th>
+                <th>广告联盟</th>
+                <th>广告位 ID</th>
+                <th>回调秘钥</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th style="min-width:80px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span class="total">共 <strong id="totalCount">0</strong> 条</span>
+          <span>每页</span>
+          <select class="page-size"><option>10</option><option selected>20</option><option>50</option></select>
+          <span>条</span>
+          <span class="page-num disabled">‹</span>
+          <span class="page-num active">1</span>
+          <span class="page-num disabled">›</span>
+          <span>跳至 <input type="text" style="width:40px;height:32px;border:1px solid #d9d9d9;border-radius:4px;text-align:center;font-size:14px;"> 页</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     确认弹窗
+     ============================================================ -->
+<div class="modal-overlay confirm-overlay" id="confirmModal">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <span class="title" id="confirmTitle">确认操作</span>
+      <span class="modal-close" onclick="closeConfirm()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-msg" id="confirmMessage">确定要执行此操作吗？</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-primary" id="confirmOkBtn" onclick="closeConfirm()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     新增/编辑广告位弹窗
+     ============================================================ -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal config-modal">
+    <div class="modal-header">
+      <span class="title" id="configTitle">新增广告位</span>
+      <span class="modal-close" onclick="closeConfigModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="config-section">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>广告位名称 <span class="required">*</span></label>
+            <input type="text" id="cfgName" placeholder="请输入广告位名称">
+          </div>
+          <div class="form-group">
+            <label>应用包名 <span class="required">*</span></label>
+            <select id="cfgApp">
+              <option value="">请选择</option>
+              <option>极速版</option>
+              <option>标准版</option>
+              <option>国际版</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>系统类型 <span class="required">*</span></label>
+            <select id="cfgPlatform">
+              <option value="">请选择</option>
+              <option>Android</option>
+              <option>IOS</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>广告联盟 <span class="required">*</span></label>
+            <select id="cfgAlliance">
+              <option value="">请选择</option>
+              <option>AdMob</option>
+              <option>Facebook</option>
+              <option>腾讯广告</option>
+              <option>快手联盟</option>
+              <option>百度联盟</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>广告位 ID <span class="required">*</span></label>
+            <input type="text" id="cfgAdSlotId" placeholder="第三方广告联盟代码位 ID">
+          </div>
+          <div class="form-group">
+            <label>回调秘钥 <span class="required">*</span></label>
+            <input type="text" id="cfgSecretKey" placeholder="服务端激励/防刷回调验证密钥">
+          </div>
+        </div>
+      </div>
+
+      <div class="status-row" style="margin-top:4px;">
+        <span class="status-label">状态</span>
+        <label class="switch">
+          <input type="checkbox" id="configStatus" checked>
+          <span class="slider"></span>
+        </label>
+        <span id="configStatusText" style="font-size:14px;color:#333;">已启用</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:#bfbfbf;" id="configModeHint"></span>
+      <span class="spacer"></span>
+      <button class="btn btn-default" onclick="closeConfigModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveStrategy()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ============================================================
+  // Mock Data：广告位管理主数据
+  // ============================================================
+  const strategies = [
+    { id: 1, strategyName: '金币-主推-AdMob', app: '极速版', platform: 'Android', alliance: 'AdMob', adSlotId: 'ca-app-pub-3940256099942544-001', secretKey: 'secret_key_ab001', enabled: true, created: '2026-08-30 10:00:00' },
+    { id: 2, strategyName: '金币-兜底-腾讯', app: '极速版', platform: 'Android', alliance: '腾讯广告', adSlotId: 'posid-10001', secretKey: 'secret_key_tx002', enabled: true, created: '2026-08-30 10:00:00' },
+    { id: 3, strategyName: '大米-主推-Facebook', app: '极速版', platform: 'Android', alliance: 'Facebook', adSlotId: 'fb-slot-202', secretKey: 'secret_key_fb003', enabled: true, created: '2026-08-29 16:20:11' },
+    { id: 4, strategyName: '大米-备用-百度', app: '极速版', platform: 'IOS', alliance: '百度联盟', adSlotId: 'baidu-slot-303', secretKey: 'secret_key_bd004', enabled: false, created: '2026-08-29 16:20:11' },
+    { id: 5, strategyName: '祈福-主推-AdMob', app: '标准版', platform: 'IOS', alliance: 'AdMob', adSlotId: 'ca-app-pub-3940256099942544-005', secretKey: 'secret_key_ab005', enabled: true, created: '2026-08-28 09:15:40' },
+    { id: 6, strategyName: '礼包-主推-快手', app: '国际版', platform: 'Android', alliance: '快手联盟', adSlotId: 'ks-slot-505', secretKey: 'secret_key_ks006', enabled: true, created: '2026-08-27 14:03:22' },
+    { id: 7, strategyName: '签到-主推-百度', app: '标准版', platform: 'Android', alliance: '百度联盟', adSlotId: 'baidu-slot-606', secretKey: 'secret_key_bd007', enabled: true, created: '2026-08-26 11:48:09' },
+    { id: 8, strategyName: '流量-主推-腾讯', app: '极速版', platform: 'IOS', alliance: '腾讯广告', adSlotId: 'posid-10008', secretKey: 'secret_key_tx008', enabled: true, created: '2026-08-25 17:30:55' },
+  ];
+  let nextId = 9;
+  let editingId = null; // null = 新增, number = 编辑
+
+  // ============================================================
+  // Sidebar
+  // ============================================================
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+  function toggleMenu(id) {
+    const el = document.getElementById(id);
+    const arrow = document.getElementById('arrow-' + id.replace('menu-', ''));
+    if (!el) return;
+    el.classList.toggle('open');
+    if (arrow) arrow.classList.toggle('open');
+  }
+
+  // ============================================================
+  // Render Table
+  // ============================================================
+  function renderTable(data) {
+    const list = (data || strategies).slice();
+    const tbody = document.getElementById('tableBody');
+    document.getElementById('totalCount').textContent = list.length;
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告位数据，点击右上角「＋ 新增广告位」创建</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((row, idx) => {
+      return `<tr class="${row.enabled ? '' : 'disabled-row'}">
+        <td style="text-align:center;color:#8c8c8c;">${idx + 1}</td>
+        <td style="color:#262626;font-weight:500;">${row.strategyName}</td>
+        <td>${row.app}</td>
+        <td><span class="tag tag-platform">${row.platform}</span></td>
+        <td><span class="tag tag-alliance">${row.alliance}</span></td>
+        <td>${row.adSlotId}</td>
+        <td><span class="secret-text">${row.secretKey}</span></td>
+        <td><label class="switch" onclick="toggleStatus(event,${row.id})"><input type="checkbox" ${row.enabled?'checked':''}><span class="slider"></span></label></td>
+        <td style="font-size:13px;color:#8c8c8c;">${row.created}</td>
+        <td>
+          <button class="btn-link" onclick="editStrategy(${row.id})">编辑</button>
+          <button class="btn-link danger" onclick="deleteStrategy(${row.id})">删除</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  renderTable();
+
+  // ============================================================
+  // Filter
+  // ============================================================
+  function applyFilter() {
+    const app = document.getElementById('fApp').value;
+    const platform = document.getElementById('fPlatform').value;
+    const alliance = document.getElementById('fAlliance').value;
+    const kw = document.getElementById('fKeyword').value.trim();
+    const status = document.getElementById('fStatus').value;
+    const list = strategies.filter(s => {
+      if (app !== '全部' && s.app !== app) return false;
+      if (platform !== '全部' && s.platform !== platform) return false;
+      if (alliance !== '全部' && s.alliance !== alliance) return false;
+      if (kw && s.strategyName.indexOf(kw) === -1) return false;
+      if (status === '已启用' && !s.enabled) return false;
+      if (status === '已禁用' && s.enabled) return false;
+      return true;
+    });
+    renderTable(list);
+  }
+  function resetFilter() {
+    document.getElementById('fApp').value = '全部';
+    document.getElementById('fPlatform').value = '全部';
+    document.getElementById('fAlliance').value = '全部';
+    document.getElementById('fKeyword').value = '';
+    document.getElementById('fStatus').value = '全部';
+    renderTable();
+  }
+
+  // ============================================================
+  // 新增 / 编辑广告位弹窗
+  // ============================================================
+  function openAddModal() {
+    editingId = null;
+    document.getElementById('configTitle').textContent = '新增广告位';
+    document.getElementById('configModeHint').textContent = '正在新增：广告位';
+    document.getElementById('cfgName').value = '';
+    document.getElementById('cfgApp').value = '';
+    document.getElementById('cfgPlatform').value = '';
+    document.getElementById('cfgAlliance').value = '';
+    document.getElementById('cfgAdSlotId').value = '';
+    document.getElementById('cfgSecretKey').value = '';
+    document.getElementById('configStatus').checked = true;
+    updateStatusText();
+    document.getElementById('configModal').classList.add('show');
+  }
+
+  function editStrategy(id) {
+    const item = strategies.find(s => s.id === id);
+    if (!item) return;
+    editingId = id;
+    document.getElementById('configTitle').textContent = '编辑广告位';
+    document.getElementById('configModeHint').textContent = '正在编辑：' + item.strategyName;
+    document.getElementById('cfgName').value = item.strategyName;
+    document.getElementById('cfgApp').value = item.app;
+    document.getElementById('cfgPlatform').value = item.platform;
+    document.getElementById('cfgAlliance').value = item.alliance;
+    document.getElementById('cfgAdSlotId').value = item.adSlotId;
+    document.getElementById('cfgSecretKey').value = item.secretKey;
+    document.getElementById('configStatus').checked = item.enabled;
+    updateStatusText();
+    document.getElementById('configModal').classList.add('show');
+  }
+
+  function closeConfigModal() {
+    document.getElementById('configModal').classList.remove('show');
+  }
+
+  function updateStatusText() {
+    const on = document.getElementById('configStatus').checked;
+    document.getElementById('configStatusText').textContent = on ? '已启用' : '已禁用';
+  }
+  document.getElementById('configStatus').addEventListener('change', updateStatusText);
+
+  // ============================================================
+  // 保存广告位（含校验）
+  // ============================================================
+  function saveStrategy() {
+    const strategyName = document.getElementById('cfgName').value.trim();
+    const app = document.getElementById('cfgApp').value;
+    const platform = document.getElementById('cfgPlatform').value;
+    const alliance = document.getElementById('cfgAlliance').value;
+    const adSlotId = document.getElementById('cfgAdSlotId').value.trim();
+    const secretKey = document.getElementById('cfgSecretKey').value.trim();
+    if (!strategyName) { showToast('请填写广告位名称'); return; }
+    if (!app) { showToast('请选择应用包名'); return; }
+    if (!platform) { showToast('请选择系统类型'); return; }
+    if (!alliance) { showToast('请选择广告联盟'); return; }
+    if (!adSlotId) { showToast('请填写广告位 ID'); return; }
+    if (!secretKey) { showToast('请填写回调秘钥'); return; }
+
+    const enabled = document.getElementById('configStatus').checked;
+
+    const data = {
+      strategyName: strategyName,
+      app: app,
+      platform: platform,
+      alliance: alliance,
+      adSlotId: adSlotId,
+      secretKey: secretKey,
+      enabled: enabled,
+    };
+
+    if (editingId) {
+      const item = strategies.find(s => s.id === editingId);
+      if (item) Object.assign(item, data);
+      showToast('已更新广告位：' + strategyName);
+    } else {
+      strategies.push(Object.assign({ id: nextId++ }, data, { created: new Date().toISOString().replace('T', ' ').substr(0, 19) }));
+      showToast('已新增广告位：' + strategyName);
+    }
+    renderTable();
+    document.getElementById('configModal').classList.remove('show');
+  }
+
+  // ============================================================
+  // 删除广告位
+  // ============================================================
+  function deleteStrategy(id) {
+    const item = strategies.find(s => s.id === id);
+    if (!item) return;
+    showConfirm('确认删除', '确定要删除广告位【<strong>' + item.strategyName + '</strong>】吗？删除后引用该广告位的广告任务将不再生效。', function() {
+      const idx = strategies.findIndex(s => s.id === id);
+      if (idx > -1) strategies.splice(idx, 1);
+      renderTable();
+      showToast('已删除广告位');
+    });
+  }
+
+  // ============================================================
+  // 状态切换
+  // ============================================================
+  function toggleStatus(event, id) {
+    event.stopPropagation();
+    const item = strategies.find(s => s.id === id);
+    if (!item) return;
+    const nextState = !item.enabled;
+    const action = nextState ? '启用' : '禁用';
+    showConfirm('确认操作', '确定要<strong>' + action + '</strong>广告位【' + item.strategyName + '】吗？' + (action === '禁用' ? '禁用后客户端将不再请求该广告位对应的广告联盟。' : ''), function() {
+      item.enabled = nextState;
+      renderTable();
+      showToast('已' + action + '广告位');
+    });
+  }
+
+  // ============================================================
+  // Confirm Modal
+  // ============================================================
+  let confirmCallback = null;
+
+  function showConfirm(title, msg, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').innerHTML = msg;
+    document.getElementById('confirmModal').classList.add('show');
+    confirmCallback = callback || null;
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirmModal').classList.remove('show');
+    if (confirmCallback) {
+      const cb = confirmCallback;
+      confirmCallback = null;
+      cb();
+    }
+  }
+
+  document.getElementById('confirmModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      document.getElementById('confirmModal').classList.remove('show');
+      confirmCallback = null;
+    }
+  });
+
+  // ============================================================
+  // Toast
+  // ============================================================
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => { t.style.display = 'none'; }, 300); }, 2000);
+  }
+</script>
+</body>
+</html>
