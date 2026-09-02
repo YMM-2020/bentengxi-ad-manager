@@ -209,7 +209,7 @@
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
   }
   .modal.confirm-modal { width: 440px; }
-  .modal.config-modal { width: 760px; }
+  .modal.config-modal { width: 980px; max-width: calc(100vw - 48px); }
   .modal .modal-header {
     padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
     display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
@@ -276,16 +276,33 @@
   .form-group .pct-wrap input { width: 100%; padding-right: 28px; }
   .form-group .pct-wrap .pct-suffix { position: absolute; right: 8px; top: 0; bottom: 0; display: flex; align-items: center; color: #bfbfbf; font-size: 13px; }
 
+  /* ---- 广告位双端配置 ---- */
+  .slot-select-row { grid-column: 1 / -1; }
+  .platform-configs { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .platform-panel { background: #fff; border: 1px solid #e8e8e8; border-radius: 4px; padding: 12px; }
+  .platform-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .platform-panel-title { font-size: 14px; font-weight: 600; color: #262626; }
+  .platform-panel-title.android { color: #389e0d; }
+  .platform-panel-title.ios { color: #1677ff; }
+  .platform-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .platform-fields .form-group { min-width: 0; }
+  .copy-platform-btn { white-space: nowrap; }
+  .platform-configs.single-platform { grid-template-columns: 1fr; }
+  .platform-configs.single-platform .platform-panel { max-width: 100%; }
+
   /* ---- 时段策略-组内多条关联策略 ---- */
   .tp-strategies { border-top: 1px dashed #d9d9d9; padding-top: 12px; margin-top: 2px; }
   .tp-strategy-row {
-    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px;
+    display: grid; grid-template-columns: 1fr; gap: 10px;
     background: #fff; border: 1px solid #f0f0f0; border-radius: 4px; padding: 10px 14px; margin-bottom: 10px;
   }
-  .tp-strategy-row .form-group { flex: 1 1 130px; margin-bottom: 0; }
-  .tp-strategy-row .form-group.tp-strategy-select { flex: 2 1 220px; }
-  .tp-strategy-row .tp-move-up, .tp-strategy-row .tp-move-down { flex: 0 0 auto; align-self: center; }
-  .tp-strategy-row .tp-del-strategy { flex: 0 0 auto; align-self: center; }
+  .tp-strategy-row .form-group { margin-bottom: 0; }
+  .tp-strategy-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+
+  @media (max-width: 860px) {
+    .platform-configs { grid-template-columns: 1fr; }
+    .platform-fields { grid-template-columns: 1fr; }
+  }
 
   /* ---- 多选渠道（渠道生效） ---- */
   .multi-select {
@@ -405,30 +422,36 @@
 
       <!-- 筛选栏 -->
       <div class="card filter-bar">
-        <label>应用包名</label>
-        <select>
+        <label>APP名称</label>
+        <select id="fApp">
           <option>全部</option>
           <option>极速版</option>
           <option>标准版</option>
           <option>国际版</option>
         </select>
+        <label>展示端</label>
+        <select id="fDisplayPlatform">
+          <option>全部</option>
+          <option>Android</option>
+          <option>iOS</option>
+        </select>
         <label>业务类型</label>
-        <select>
+        <select id="fType">
           <option>全部</option>
           <option>福利</option>
           <option>祈福</option>
           <option>签到</option>
         </select>
         <label>状态</label>
-        <select>
+        <select id="fStatus">
           <option>全部</option>
           <option>已启用</option>
           <option>已禁用</option>
         </select>
         <label>广告任务标题</label>
-        <input type="text" placeholder="请输入广告任务标题" style="width:180px;">
-        <button class="btn btn-primary">🔍 查询</button>
-        <button class="btn btn-default">↻ 重置</button>
+        <input type="text" id="fName" placeholder="请输入广告任务标题" style="width:180px;">
+        <button class="btn btn-primary" onclick="applyFilter()">🔍 查询</button>
+        <button class="btn btn-default" onclick="resetFilter()">↻ 重置</button>
         <span class="spacer"></span>
         <button class="btn btn-primary" onclick="openConfigModal()">＋ 新增广告任务</button>
       </div>
@@ -440,7 +463,8 @@
             <thead>
               <tr>
                 <th style="width:50px;">编号</th>
-                <th>应用包名</th>
+                <th>APP名称</th>
+                <th>展示端</th>
                 <th>业务类型</th>
                 <th>广告任务图标</th>
                 <th>广告任务标题</th>
@@ -518,12 +542,20 @@
         <div class="config-section-title">基础配置</div>
         <div class="form-grid">
           <div class="form-group">
-            <label>应用包名 <span class="required">*</span></label>
+            <label>APP名称 <span class="required">*</span></label>
             <select id="cfgApp">
               <option value="">请选择</option>
               <option>极速版</option>
               <option>标准版</option>
               <option>国际版</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>展示端 <span class="required">*</span></label>
+            <select id="cfgDisplayPlatform" onchange="refreshDisplayPlatform()">
+              <option value="全部" selected>全部</option>
+              <option value="Android">Android</option>
+              <option value="iOS">iOS</option>
             </select>
           </div>
           <div class="form-group">
@@ -552,6 +584,10 @@
           <div class="form-group" id="rowSubtitle">
             <label>广告任务副标题 <span class="required">*</span></label>
             <input type="text" id="cfgSubtitle" placeholder="请输入副标题">
+          </div>
+          <div class="form-group" id="rowButtonText">
+            <label>按钮文案</label>
+            <input type="text" id="cfgButtonText" maxlength="5" placeholder="选填，最多 5 个字符">
           </div>
           <!-- 生效类型（非必填） -->
           <div class="form-group" style="grid-column: 1 / -1;">
@@ -583,6 +619,11 @@
           <div class="form-group" style="grid-column: 1 / -1;">
             <label>生效用户 </label>
             <textarea id="cfgEffectUsers" rows="3" placeholder="输入用户手机号，多个用逗号或换行分隔" style="width:100%;min-height:90px;resize:vertical;padding:8px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;line-height:1.6;font-family:inherit;box-sizing:border-box;"></textarea>
+          </div>
+          <!-- 不生效用户（非必填，录入规则同生效用户） -->
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>不生效用户 </label>
+            <textarea id="cfgExcludedUsers" rows="3" placeholder="输入用户手机号，多个用逗号或换行分隔" style="width:100%;min-height:90px;resize:vertical;padding:8px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;line-height:1.6;font-family:inherit;box-sizing:border-box;"></textarea>
           </div>
           <div class="form-group">
             <label>广告时间间隔（秒） <span class="required">*</span></label>
@@ -672,38 +713,30 @@
               </div>
             </div>
             <div class="form-grid">
-              <div class="form-group">
+              <div class="form-group slot-select-row">
                 <label>广告位 <span class="required">*</span></label>
                 <select class="saStrategy">
                   <option value="">请选择</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>填充率要求</label>
-                <div class="fill-rate-row">
-                  <label class="switch"><input type="checkbox" class="saFillOn"><span class="slider"></span></label>
-                  <span class="label-text saFillText">已关闭</span>
+              <div class="platform-configs">
+                <div class="platform-panel android-panel">
+                  <div class="platform-panel-header"><span class="platform-panel-title android">Android 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyIosToAndroid(this,'sa')">复制 iOS 配置</button></div>
+                  <div class="platform-fields">
+                    <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="saAndroidFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+                    <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="saAndroidTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="saAndroidKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="saAndroidBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                  </div>
                 </div>
-              </div>
-              <div class="form-group">
-                <label>腾讯填充率（%）</label>
-                <div class="pct-wrap">
-                  <input type="text" class="saTencent" placeholder="请输入">
-                  <span class="pct-suffix">%</span>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>快手填充率（%）</label>
-                <div class="pct-wrap">
-                  <input type="text" class="saKuaishou" placeholder="请输入">
-                  <span class="pct-suffix">%</span>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>百度填充率（%）</label>
-                <div class="pct-wrap">
-                  <input type="text" class="saBaidu" placeholder="请输入">
-                  <span class="pct-suffix">%</span>
+                <div class="platform-panel ios-panel">
+                  <div class="platform-panel-header"><span class="platform-panel-title ios">iOS 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyAndroidToIos(this,'sa')">复制 Android 配置</button></div>
+                  <div class="platform-fields">
+                    <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="saIosFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+                    <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="saIosTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="saIosKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="saIosBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -759,28 +792,31 @@
                   <label>广告位 <span class="required">*</span></label>
                   <select class="tpStrategy"><option value="">请选择</option></select>
                 </div>
-                <div class="form-group">
-                  <label>填充率要求</label>
-                  <div class="fill-rate-row">
-                    <label class="switch"><input type="checkbox" class="tpFillOn"><span class="slider"></span></label>
-                    <span class="label-text tpFillText">已关闭</span>
+                <div class="platform-configs">
+                  <div class="platform-panel android-panel">
+                    <div class="platform-panel-header"><span class="platform-panel-title android">Android 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyIosToAndroid(this,'tp')">复制 iOS 配置</button></div>
+                    <div class="platform-fields">
+                      <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="tpAndroidFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+                      <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="tpAndroidTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                      <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="tpAndroidKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                      <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="tpAndroidBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    </div>
+                  </div>
+                  <div class="platform-panel ios-panel">
+                    <div class="platform-panel-header"><span class="platform-panel-title ios">iOS 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyAndroidToIos(this,'tp')">复制 Android 配置</button></div>
+                    <div class="platform-fields">
+                      <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="tpIosFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+                      <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="tpIosTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                      <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="tpIosKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                      <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="tpIosBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+                    </div>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label>腾讯填充率（%）</label>
-                  <div class="pct-wrap"><input type="text" class="tpTencent" placeholder="请输入"><span class="pct-suffix">%</span></div>
+                <div class="tp-strategy-actions">
+                  <button class="btn-link tp-move-up" onclick="moveTpStrategy('tp1', this, -1)">↑ 上移</button>
+                  <button class="btn-link tp-move-down" onclick="moveTpStrategy('tp1', this, 1)">↓ 下移</button>
+                  <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('tp1', this)">✕ 删除</button>
                 </div>
-                <div class="form-group">
-                  <label>快手填充率（%）</label>
-                  <div class="pct-wrap"><input type="text" class="tpKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div>
-                </div>
-                <div class="form-group">
-                  <label>百度填充率（%）</label>
-                  <div class="pct-wrap"><input type="text" class="tpBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div>
-                </div>
-                <button class="btn-link tp-move-up" onclick="moveTpStrategy('tp1', this, -1)">↑ 上移</button>
-                <button class="btn-link tp-move-down" onclick="moveTpStrategy('tp1', this, 1)">↓ 下移</button>
-                <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('tp1', this)">✕ 删除</button>
               </div>
             </div>
             <div class="strategy-add-wrap">
@@ -873,14 +909,14 @@
   ];
   // 广告位数据（与「广告位管理」菜单同源，供关联广告位下拉选择）
   const strategiesData = [
-    { id:1, strategyName:'金币-主推-AdMob', platform:'Android', alliance:'AdMob' },
-    { id:2, strategyName:'金币-兜底-腾讯', platform:'Android', alliance:'腾讯广告' },
-    { id:3, strategyName:'大米-主推-Facebook', platform:'Android', alliance:'Facebook' },
-    { id:4, strategyName:'大米-备用-百度', platform:'IOS', alliance:'百度联盟' },
-    { id:5, strategyName:'祈福-主推-AdMob', platform:'IOS', alliance:'AdMob' },
-    { id:6, strategyName:'礼包-主推-快手', platform:'Android', alliance:'快手联盟' },
-    { id:7, strategyName:'签到-主推-百度', platform:'Android', alliance:'百度联盟' },
-    { id:8, strategyName:'流量-主推-腾讯', platform:'IOS', alliance:'腾讯广告' },
+    { id:1, strategyName:'金币-主推-AdMob', alliance:'AdMob' },
+    { id:2, strategyName:'金币-兜底-腾讯', alliance:'腾讯广告' },
+    { id:3, strategyName:'大米-主推-Facebook', alliance:'Facebook' },
+    { id:4, strategyName:'大米-备用-百度', alliance:'百度联盟' },
+    { id:5, strategyName:'祈福-主推-AdMob', alliance:'AdMob' },
+    { id:6, strategyName:'礼包-主推-快手', alliance:'快手联盟' },
+    { id:7, strategyName:'签到-主推-百度', alliance:'百度联盟' },
+    { id:8, strategyName:'流量-主推-腾讯', alliance:'腾讯广告' },
   ];
   let nextId = 8;
   let editingId = null; // null = 新增, number = 编辑
@@ -895,7 +931,7 @@
     const tbody = document.getElementById('tableBody');
     document.getElementById('totalCount').textContent = list.length;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告任务数据，点击右上角「＋ 新增广告任务」创建</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告任务数据，点击右上角「＋ 新增广告任务」创建</td></tr>';
       return;
     }
     tbody.innerHTML = list.map((row, idx) => {
@@ -908,6 +944,7 @@
       return `<tr class="${row.enabled ? '' : 'disabled-row'}">
         <td style="text-align:center;color:#8c8c8c;">${idx + 1}</td>
         <td>${row.app}</td>
+        <td><span class="tag tag-version">${row.displayPlatform || '全部'}</span></td>
         <td><span class="tag ${row.typeCls}">${row.type}</span></td>
         <td>${row.icon ? '<div class="icon-box">' + row.icon + '</div>' : '<span style="color:#bfbfbf;">-</span>'}</td>
         <td>${row.name ? '<span class="ad-name">' + row.name + '</span>' : '<span style="color:#bfbfbf;">-</span>'}</td>
@@ -933,6 +970,37 @@
   renderTable();
   refreshTimePriceActions();
   refreshTpStrategyActions(document.getElementById('tp1'));
+
+  // ============================================================
+  // 列表筛选
+  // ============================================================
+  function applyFilter() {
+    const app = document.getElementById('fApp').value;
+    const displayPlatform = document.getElementById('fDisplayPlatform').value;
+    const type = document.getElementById('fType').value;
+    const status = document.getElementById('fStatus').value;
+    const name = document.getElementById('fName').value.trim();
+    const list = adSlots.filter(item => {
+      if (app !== '全部' && item.app !== app) return false;
+      const itemPlatform = item.displayPlatform || '全部';
+      if (displayPlatform !== '全部' && itemPlatform !== '全部' && itemPlatform !== displayPlatform) return false;
+      if (type !== '全部' && item.type !== type) return false;
+      if (status === '已启用' && !item.enabled) return false;
+      if (status === '已禁用' && item.enabled) return false;
+      if (name && (item.name || '').indexOf(name) === -1) return false;
+      return true;
+    });
+    renderTable(list);
+  }
+
+  function resetFilter() {
+    document.getElementById('fApp').value = '全部';
+    document.getElementById('fDisplayPlatform').value = '全部';
+    document.getElementById('fType').value = '全部';
+    document.getElementById('fStatus').value = '全部';
+    document.getElementById('fName').value = '';
+    renderTable();
+  }
 
   // ============================================================
   // 分成类型切换
@@ -1020,9 +1088,11 @@
 
   function resetConfigForm() {
     document.getElementById('cfgApp').value = '';
+    document.getElementById('cfgDisplayPlatform').value = '全部';
     document.getElementById('cfgType').value = '';
     document.getElementById('cfgName').value = '';
     document.getElementById('cfgSubtitle').value = '';
+    document.getElementById('cfgButtonText').value = '';
     document.getElementById('cfgInterval').value = '';
     document.getElementById('cfgUserLimit').value = '';
     document.getElementById('cfgDeviceLimit').value = '';
@@ -1062,11 +1132,8 @@
     const saFirst = saContainer.querySelector('.strategy-group');
     if (saFirst) {
       saFirst.querySelector('.saStrategy').value = '';
-      saFirst.querySelector('.saFillOn').checked = false;
-      saFirst.querySelector('.saFillText').textContent = '已关闭';
-      saFirst.querySelector('.saTencent').value = '';
-      saFirst.querySelector('.saKuaishou').value = '';
-      saFirst.querySelector('.saBaidu').value = '';
+      setPlatformConfig(saFirst, 'sa', 'Android', null);
+      setPlatformConfig(saFirst, 'sa', 'Ios', null);
     }
     // 重置状态为启用
     document.getElementById('configStatus').checked = true;
@@ -1074,6 +1141,7 @@
     // 重置生效类型 / 渠道 / 代理（均为非必填）
     document.getElementById('cfgEffectType').value = '';
     document.getElementById('cfgEffectUsers').value = '';
+    document.getElementById('cfgExcludedUsers').value = '';
     selectedChannels.clear();
     selectedAgents.clear();
     renderChannelTags();
@@ -1086,6 +1154,7 @@
     refreshStrategyAssocActions();
     refreshStrategyOptions();
     refreshTpMode();
+    refreshDisplayPlatform();
     onTypeChange();
   }
 
@@ -1096,11 +1165,13 @@
     document.getElementById('configTitle').textContent = '编辑广告任务';
     document.getElementById('configModeHint').textContent = '正在编辑：「' + item.name + '」';
     document.getElementById('cfgApp').value = item.app;
+    document.getElementById('cfgDisplayPlatform').value = item.displayPlatform || '全部';
     document.getElementById('cfgType').value = item.type;
     currentIcon = item.icon || '';
     setIconDisplay();
     document.getElementById('cfgName').value = item.name;
     document.getElementById('cfgSubtitle').value = item.subtitle || '';
+    document.getElementById('cfgButtonText').value = item.buttonText || '';
     document.getElementById('cfgInterval').value = item.interval || '';
     document.getElementById('cfgUserLimit').value = item.userLimit || '';
     document.getElementById('cfgDeviceLimit').value = item.deviceLimit || '';
@@ -1147,6 +1218,7 @@
     // 生效类型 / 生效用户 / 渠道 / 代理（非必填）
     document.getElementById('cfgEffectType').value = item.effectType || '';
     document.getElementById('cfgEffectUsers').value = item.effectUsers || '';
+    document.getElementById('cfgExcludedUsers').value = item.excludedUsers || '';
     selectedChannels.clear();
     (item.effectChannels || []).forEach(c => selectedChannels.add(c));
     selectedAgents.clear();
@@ -1173,19 +1245,90 @@
     document.getElementById('configStatusText').textContent = statusCb.checked ? '已启用' : '已禁用';
     refreshTimePriceActions();
     refreshStrategyAssocActions();
+    refreshDisplayPlatform();
     onTypeChange();
     document.getElementById('configModal').classList.add('show');
+  }
+
+  function platformConfigHtml(prefix) {
+    return `
+      <div class="platform-configs">
+        <div class="platform-panel android-panel">
+          <div class="platform-panel-header"><span class="platform-panel-title android">Android 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyIosToAndroid(this,'${prefix}')">复制 iOS 配置</button></div>
+          <div class="platform-fields">
+            <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="${prefix}AndroidFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+            <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}AndroidTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+            <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}AndroidKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+            <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}AndroidBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+          </div>
+        </div>
+        <div class="platform-panel ios-panel">
+          <div class="platform-panel-header"><span class="platform-panel-title ios">iOS 端配置</span><button type="button" class="btn btn-default btn-sm copy-platform-btn" onclick="copyAndroidToIos(this,'${prefix}')">复制 Android 配置</button></div>
+          <div class="platform-fields">
+            <div class="form-group"><label>填充率要求</label><div class="fill-rate-row"><label class="switch"><input type="checkbox" class="${prefix}IosFillOn fill-toggle"><span class="slider"></span></label><span class="label-text fill-text">已关闭</span></div></div>
+            <div class="form-group"><label>腾讯填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}IosTencent" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+            <div class="form-group"><label>快手填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}IosKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+            <div class="form-group"><label>百度填充率（%）</label><div class="pct-wrap"><input type="text" class="${prefix}IosBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function readPlatformData(data, platform) {
+    if (data && data[platform]) return data[platform];
+    return {
+      fillRateOn: !!(data && data.fillRateOn),
+      tencent: data && data.tencent || '',
+      kuaishou: data && data.kuaishou || '',
+      baidu: data && data.baidu || '',
+    };
+  }
+
+  function setPlatformConfig(root, prefix, platformClass, data) {
+    const platformKey = platformClass === 'Android' ? 'android' : 'ios';
+    const value = readPlatformData(data, platformKey);
+    const fillOn = root.querySelector('.' + prefix + platformClass + 'FillOn');
+    if (!fillOn) return;
+    fillOn.checked = !!value.fillRateOn;
+    fillOn.closest('.fill-rate-row').querySelector('.fill-text').textContent = fillOn.checked ? '已开启' : '已关闭';
+    root.querySelector('.' + prefix + platformClass + 'Tencent').value = value.tencent || '';
+    root.querySelector('.' + prefix + platformClass + 'Kuaishou').value = value.kuaishou || '';
+    root.querySelector('.' + prefix + platformClass + 'Baidu').value = value.baidu || '';
+  }
+
+  function collectPlatformConfig(root, prefix, platformClass) {
+    return {
+      fillRateOn: root.querySelector('.' + prefix + platformClass + 'FillOn').checked,
+      tencent: root.querySelector('.' + prefix + platformClass + 'Tencent').value,
+      kuaishou: root.querySelector('.' + prefix + platformClass + 'Kuaishou').value,
+      baidu: root.querySelector('.' + prefix + platformClass + 'Baidu').value,
+    };
+  }
+
+  function copyPlatformConfig(btn, prefix, fromPlatform, toPlatform) {
+    const root = btn.closest(prefix === 'sa' ? '.strategy-group' : '.tp-strategy-row');
+    if (!root) return;
+    const source = collectPlatformConfig(root, prefix, fromPlatform);
+    const targetKey = toPlatform === 'Android' ? 'android' : 'ios';
+    setPlatformConfig(root, prefix, toPlatform, { [targetKey]: source });
+  }
+
+  function copyAndroidToIos(btn, prefix) {
+    copyPlatformConfig(btn, prefix, 'Android', 'Ios');
+    showToast('已将 Android 端配置复制到 iOS 端');
+  }
+
+  function copyIosToAndroid(btn, prefix) {
+    copyPlatformConfig(btn, prefix, 'Ios', 'Android');
+    showToast('已将 iOS 端配置复制到 Android 端');
   }
 
   function fillSaGroup(el, data) {
     if (!el || !data) return;
     const ok = data.strategyName && strategiesData.some(s => s.strategyName === data.strategyName);
     el.querySelector('.saStrategy').value = ok ? data.strategyName : '';
-    el.querySelector('.saFillOn').checked = !!data.fillRateOn;
-    el.querySelector('.saFillText').textContent = data.fillRateOn ? '已开启' : '已关闭';
-    el.querySelector('.saTencent').value = data.tencent || '';
-    el.querySelector('.saKuaishou').value = data.kuaishou || '';
-    el.querySelector('.saBaidu').value = data.baidu || '';
+    setPlatformConfig(el, 'sa', 'Android', data);
+    setPlatformConfig(el, 'sa', 'Ios', data);
   }
 
   function fillTpGroup(el, data) {
@@ -1207,11 +1350,13 @@
     document.getElementById('configTitle').textContent = '新增广告任务（复制）';
     document.getElementById('configModeHint').textContent = '基于「' + item.name + '」复制';
     document.getElementById('cfgApp').value = item.app;
+    document.getElementById('cfgDisplayPlatform').value = item.displayPlatform || '全部';
     document.getElementById('cfgType').value = item.type;
     currentIcon = item.icon || '';
     setIconDisplay();
     document.getElementById('cfgName').value = item.name + '_副本';
     document.getElementById('cfgSubtitle').value = item.subtitle || '';
+    document.getElementById('cfgButtonText').value = item.buttonText || '';
     document.getElementById('cfgInterval').value = item.interval || '';
     document.getElementById('cfgUserLimit').value = item.userLimit || '';
     document.getElementById('cfgDeviceLimit').value = item.deviceLimit || '';
@@ -1222,6 +1367,16 @@
     document.getElementById('cfgSplitRatio').value = item.splitRatio || '';
     document.getElementById('cfgMinCoinPrice').value = item.minCoinPrice || '';
     document.getElementById('cfgFixedCoin').value = item.fixedCoin || '';
+    document.getElementById('cfgEffectType').value = item.effectType || '';
+    document.getElementById('cfgEffectUsers').value = item.effectUsers || '';
+    document.getElementById('cfgExcludedUsers').value = item.excludedUsers || '';
+    selectedChannels.clear();
+    (item.effectChannels || []).forEach(c => selectedChannels.add(c));
+    selectedAgents.clear();
+    (item.effectAgents || []).forEach(a => selectedAgents.add(a));
+    renderChannelTags();
+    renderAgentBlock();
+    applyEffectType();
     const rewardType = item.rewardType || 'ratio';
     const radio = document.querySelector('input[name="rewardType"][value="' + rewardType + '"]');
     if (radio) radio.checked = true;
@@ -1257,6 +1412,7 @@
     }
     refreshTimePriceActions();
     refreshStrategyAssocActions();
+    refreshDisplayPlatform();
     onTypeChange();
     document.getElementById('configModal').classList.add('show');
   }
@@ -1301,10 +1457,12 @@
   // ============================================================
   function validateConfig() {
     const app = document.getElementById('cfgApp').value;
-    if (!app) { showToast('请选择应用包名'); return false; }
+    if (!app) { showToast('请选择 APP名称'); return false; }
+    const displayPlatform = document.getElementById('cfgDisplayPlatform').value;
+    if (!displayPlatform) { showToast('请选择展示端'); return false; }
     const type = document.getElementById('cfgType').value;
     if (!type) { showToast('请选择业务类型'); return false; }
-    // 业务类型为「祈福」或未选择时隐藏图标/标题/副标题，不做必填校验；仅 福利 / 签到 显示并必填
+    // 业务类型为「祈福」或未选择时隐藏图标/标题/副标题/按钮文案；按钮文案为选填
     if (type === '福利' || type === '签到') {
       if (!currentIcon) { showToast('请上传广告任务图标'); return false; }
       const name = document.getElementById('cfgName').value.trim();
@@ -1353,6 +1511,7 @@
         }
       }
     }
+    return true;
   }
 
   // ============================================================
@@ -1361,8 +1520,10 @@
   function executeSave() {
     const name = document.getElementById('cfgName').value.trim();
     const app = document.getElementById('cfgApp').value;
+    const displayPlatform = document.getElementById('cfgDisplayPlatform').value;
     const type = document.getElementById('cfgType').value;
     const subtitle = document.getElementById('cfgSubtitle').value.trim();
+    const buttonText = document.getElementById('cfgButtonText').value.trim().slice(0, 5);
     const interval = document.getElementById('cfgInterval').value;
     const userLimit = document.getElementById('cfgUserLimit').value;
     const deviceLimit = document.getElementById('cfgDeviceLimit').value;
@@ -1375,6 +1536,7 @@
     const rewardTypeVal = document.querySelector('input[name="rewardType"]:checked').value;
     const effectTypeVal = document.getElementById('cfgEffectType').value;
     const effectUsersVal = document.getElementById('cfgEffectUsers').value.trim();
+    const excludedUsersVal = document.getElementById('cfgExcludedUsers').value.trim();
     const yangLineVal = document.getElementById('cfgYangLine').value;
     const adRequirementVal = document.getElementById('cfgAdRequirement').value;
     const effectChannelsVal = Array.from(selectedChannels);
@@ -1391,10 +1553,8 @@
         g.querySelectorAll('.tp-strategy-row').forEach(r => {
           strategies.push({
             strategyName: r.querySelector('.tpStrategy').value,
-            fillRateOn: r.querySelector('.tpFillOn').checked,
-            tencent: r.querySelector('.tpTencent').value,
-            kuaishou: r.querySelector('.tpKuaishou').value,
-            baidu: r.querySelector('.tpBaidu').value,
+            android: collectPlatformConfig(r, 'tp', 'Android'),
+            ios: collectPlatformConfig(r, 'tp', 'Ios'),
           });
         });
         timePrice.push({
@@ -1413,10 +1573,8 @@
       saGroups.forEach(g => {
         strategyAssoc.push({
           strategyName: g.querySelector('.saStrategy').value,
-          fillRateOn: g.querySelector('.saFillOn').checked,
-          tencent: g.querySelector('.saTencent').value,
-          kuaishou: g.querySelector('.saKuaishou').value,
-          baidu: g.querySelector('.saBaidu').value,
+          android: collectPlatformConfig(g, 'sa', 'Android'),
+          ios: collectPlatformConfig(g, 'sa', 'Ios'),
         });
       });
     }
@@ -1426,9 +1584,11 @@
       if (item) {
         item.name = name;
         item.app = app;
+        item.displayPlatform = displayPlatform;
         item.type = type;
         item.icon = currentIcon;
         item.subtitle = subtitle;
+        item.buttonText = buttonText;
         item.interval = interval;
         item.userLimit = userLimit;
         item.deviceLimit = deviceLimit;
@@ -1445,6 +1605,7 @@
         item.fixedCoin = rewardTypeVal === 'fixed' ? fixedCoinVal : '';
         item.effectType = effectTypeVal;
         item.effectUsers = effectUsersVal;
+        item.excludedUsers = excludedUsersVal;
         item.effectChannels = effectChannelsVal;
         item.effectAgents = effectAgentsVal;
         item.yangLine = yangLineVal;
@@ -1455,11 +1616,13 @@
       adSlots.push({
         id: nextId++,
         app: app,
+        displayPlatform: displayPlatform,
         type: type,
         typeCls: type === '祈福' ? 'tag-qifu' : 'tag-fuli',
         icon: currentIcon || '📢',
         name: name,
         subtitle: subtitle,
+        buttonText: buttonText,
         interval: interval,
         userLimit: userLimit,
         deviceLimit: deviceLimit,
@@ -1476,6 +1639,7 @@
         fixedCoin: rewardTypeVal === 'fixed' ? fixedCoinVal : '',
         effectType: effectTypeVal,
         effectUsers: effectUsersVal,
+        excludedUsers: excludedUsersVal,
         effectChannels: effectChannelsVal,
         effectAgents: effectAgentsVal,
         yangLine: yangLineVal,
@@ -1582,35 +1746,16 @@
         <label>广告位 <span class="required">*</span></label>
         <select class="tpStrategy"><option value="">请选择</option></select>
       </div>
-      <div class="form-group">
-        <label>填充率要求</label>
-        <div class="fill-rate-row">
-          <label class="switch"><input type="checkbox" class="tpFillOn"><span class="slider"></span></label>
-          <span class="label-text tpFillText">已关闭</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>腾讯填充率（%）</label>
-        <div class="pct-wrap"><input type="text" class="tpTencent" placeholder="请输入"><span class="pct-suffix">%</span></div>
-      </div>
-      <div class="form-group">
-        <label>快手填充率（%）</label>
-        <div class="pct-wrap"><input type="text" class="tpKuaishou" placeholder="请输入"><span class="pct-suffix">%</span></div>
-      </div>
-      <div class="form-group">
-        <label>百度填充率（%）</label>
-        <div class="pct-wrap"><input type="text" class="tpBaidu" placeholder="请输入"><span class="pct-suffix">%</span></div>
-      </div>
-      <button class="btn-link tp-move-up" onclick="moveTpStrategy('${groupId}', this, -1)">↑ 上移</button>
-      <button class="btn-link tp-move-down" onclick="moveTpStrategy('${groupId}', this, 1)">↓ 下移</button>
-      <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('${groupId}', this)">✕ 删除</button>`;
+      ${platformConfigHtml('tp')}
+      <div class="tp-strategy-actions">
+        <button class="btn-link tp-move-up" onclick="moveTpStrategy('${groupId}', this, -1)">↑ 上移</button>
+        <button class="btn-link tp-move-down" onclick="moveTpStrategy('${groupId}', this, 1)">↓ 下移</button>
+        <button class="btn btn-sm btn-link danger tp-del-strategy" onclick="removeTpStrategy('${groupId}', this)">✕ 删除</button>
+      </div>`;
     container.appendChild(div);
     if (data) {
-      div.querySelector('.tpFillOn').checked = !!data.fillRateOn;
-      div.querySelector('.tpFillText').textContent = data.fillRateOn ? '已开启' : '已关闭';
-      div.querySelector('.tpTencent').value = data.tencent || '';
-      div.querySelector('.tpKuaishou').value = data.kuaishou || '';
-      div.querySelector('.tpBaidu').value = data.baidu || '';
+      setPlatformConfig(div, 'tp', 'Android', data);
+      setPlatformConfig(div, 'tp', 'Ios', data);
     }
     // 先填充广告位下拉选项，再回填选中值（新行初始只有占位选项）
     refreshStrategyOptions();
@@ -1619,6 +1764,7 @@
       div.querySelector('.tpStrategy').value = ok ? data.strategyName : '';
     }
     refreshTpStrategyActions(group);
+    refreshDisplayPlatform();
     return div;
   }
 
@@ -1720,46 +1866,20 @@
         </div>
       </div>
       <div class="form-grid">
-        <div class="form-group">
+        <div class="form-group slot-select-row">
           <label>广告位 <span class="required">*</span></label>
           <select class="saStrategy">
             <option value="">请选择</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>填充率要求</label>
-          <div class="fill-rate-row">
-            <label class="switch"><input type="checkbox" class="saFillOn"><span class="slider"></span></label>
-            <span class="label-text saFillText">已关闭</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>腾讯填充率（%）</label>
-          <div class="pct-wrap">
-            <input type="text" class="saTencent" placeholder="请输入">
-            <span class="pct-suffix">%</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>快手填充率（%）</label>
-          <div class="pct-wrap">
-            <input type="text" class="saKuaishou" placeholder="请输入">
-            <span class="pct-suffix">%</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>百度填充率（%）</label>
-          <div class="pct-wrap">
-            <input type="text" class="saBaidu" placeholder="请输入">
-            <span class="pct-suffix">%</span>
-          </div>
-        </div>
+        ${platformConfigHtml('sa')}
       </div>`;
     document.getElementById('strategyAssocContainer').appendChild(div);
     if (data) fillSaGroup(div, data);
     refreshStrategyOptions();
     refreshStrategyAssocLabels();
     refreshStrategyAssocActions();
+    refreshDisplayPlatform();
     if (!data) showToast('已添加广告位组');
   }
 
@@ -1813,15 +1933,15 @@
     });
   }
 
-  // 填充率要求开关文案（事件委托）
+  // Android / iOS 填充率要求开关文案（事件委托）
   document.getElementById('strategyAssocContainer').addEventListener('change', function(e) {
-    if (e.target.classList.contains('saFillOn')) {
-      e.target.closest('.strategy-group').querySelector('.saFillText').textContent = e.target.checked ? '已开启' : '已关闭';
+    if (e.target.classList.contains('fill-toggle')) {
+      e.target.closest('.fill-rate-row').querySelector('.fill-text').textContent = e.target.checked ? '已开启' : '已关闭';
     }
   });
   document.getElementById('timePriceContainer').addEventListener('change', function(e) {
-    if (e.target.classList.contains('tpFillOn')) {
-      e.target.closest('.tp-strategy-row').querySelector('.tpFillText').textContent = e.target.checked ? '已开启' : '已关闭';
+    if (e.target.classList.contains('fill-toggle')) {
+      e.target.closest('.fill-rate-row').querySelector('.fill-text').textContent = e.target.checked ? '已开启' : '已关闭';
     }
   });
 
@@ -1843,13 +1963,31 @@
     });
   }
 
-  // 业务类型未选择或为「祈福」时隐藏 图标 / 标题 / 副标题，仅 福利 / 签到 显示
+  // 业务类型未选择或为「祈福」时隐藏图标、标题、副标题和按钮文案，仅福利 / 签到显示
   function onTypeChange() {
     const type = document.getElementById('cfgType').value;
     const show = type === '福利' || type === '签到';
     document.getElementById('rowIcon').style.display = show ? '' : 'none';
     document.getElementById('rowName').style.display = show ? '' : 'none';
     document.getElementById('rowSubtitle').style.display = show ? '' : 'none';
+    document.getElementById('rowButtonText').style.display = show ? '' : 'none';
+  }
+
+  // 展示端联动：全部显示双端并允许双向复制；单端仅展示对应配置
+  function refreshDisplayPlatform() {
+    const platform = document.getElementById('cfgDisplayPlatform').value || '全部';
+    const showAndroid = platform === '全部' || platform === 'Android';
+    const showIos = platform === '全部' || platform === 'iOS';
+    document.querySelectorAll('.platform-configs').forEach(container => {
+      const androidPanel = container.querySelector('.android-panel');
+      const iosPanel = container.querySelector('.ios-panel');
+      if (androidPanel) androidPanel.style.display = showAndroid ? '' : 'none';
+      if (iosPanel) iosPanel.style.display = showIos ? '' : 'none';
+      container.classList.toggle('single-platform', platform !== '全部');
+      container.querySelectorAll('.copy-platform-btn').forEach(btn => {
+        btn.style.display = platform === '全部' ? '' : 'none';
+      });
+    });
   }
 
   // 时段策略与关联广告位互斥：时段策略开启时展示时段策略组，隐藏关联广告位区

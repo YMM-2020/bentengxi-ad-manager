@@ -214,11 +214,13 @@
   .form-group { display: flex; flex-direction: column; gap: 4px; }
   .form-group label { font-size: 14px; font-weight: 500; color: #262626; display: inline-flex; align-items: center; gap: 4px; }
   .form-group label .required { color: #ff4d4f; margin-left: 2px; }
-  .form-group input, .form-group select {
+  .form-group input, .form-group select, .form-group textarea {
     height: 32px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 4px;
     font-size: 14px; outline: none; background: #fff; color: #262626;
   }
-  .form-group input:focus, .form-group select:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .form-group textarea { height: 64px; padding: 7px 8px; resize: vertical; font-family: inherit; line-height: 1.5; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+  .form-group.full-row { grid-column: 1 / -1; }
   .form-group .pct-wrap { position: relative; }
   .form-group .pct-wrap input { width: 100%; padding-right: 28px; }
   .form-group .pct-wrap .pct-suffix { position: absolute; right: 8px; top: 0; bottom: 0; display: flex; align-items: center; color: #bfbfbf; font-size: 13px; }
@@ -299,18 +301,12 @@
 
       <!-- 筛选栏 -->
       <div class="card filter-bar">
-        <label>应用包名</label>
-        <select id="fApp">
+        <label>APP名称</label>
+        <select id="fAppName">
           <option>全部</option>
           <option>极速版</option>
           <option>标准版</option>
           <option>国际版</option>
-        </select>
-        <label>系统类型</label>
-        <select id="fPlatform">
-          <option>全部</option>
-          <option>Android</option>
-          <option>IOS</option>
         </select>
         <label>广告联盟</label>
         <select id="fAlliance">
@@ -343,11 +339,13 @@
               <tr>
                 <th style="width:50px;">编号</th>
                 <th>广告位名称</th>
-                <th>应用包名</th>
-                <th>系统类型</th>
+                <th>APP名称</th>
                 <th>广告联盟</th>
-                <th>广告位 ID</th>
-                <th>回调秘钥</th>
+                <th>Android 广告位 ID</th>
+                <th>Android 回调秘钥</th>
+                <th>iOS 广告位 ID</th>
+                <th>iOS 回调秘钥</th>
+                <th>备注</th>
                 <th>状态</th>
                 <th>创建时间</th>
                 <th style="min-width:80px;">操作</th>
@@ -408,20 +406,12 @@
             <input type="text" id="cfgName" placeholder="请输入广告位名称">
           </div>
           <div class="form-group">
-            <label>应用包名 <span class="required">*</span></label>
-            <select id="cfgApp">
+            <label>APP名称 <span class="required">*</span></label>
+            <select id="cfgAppName">
               <option value="">请选择</option>
               <option>极速版</option>
               <option>标准版</option>
               <option>国际版</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>系统类型 <span class="required">*</span></label>
-            <select id="cfgPlatform">
-              <option value="">请选择</option>
-              <option>Android</option>
-              <option>IOS</option>
             </select>
           </div>
           <div class="form-group">
@@ -436,12 +426,24 @@
             </select>
           </div>
           <div class="form-group">
-            <label>广告位 ID <span class="required">*</span></label>
-            <input type="text" id="cfgAdSlotId" placeholder="第三方广告联盟代码位 ID">
+            <label>Android 广告位 ID</label>
+            <input type="text" id="cfgAndroidAdSlotId" placeholder="选填，Android 端第三方广告联盟代码位 ID">
           </div>
           <div class="form-group">
-            <label>回调秘钥 <span class="required">*</span></label>
-            <input type="text" id="cfgSecretKey" placeholder="服务端激励/防刷回调验证密钥">
+            <label>Android 回调秘钥</label>
+            <input type="text" id="cfgAndroidSecretKey" placeholder="选填，Android 端服务端回调验证密钥">
+          </div>
+          <div class="form-group">
+            <label>iOS 广告位 ID</label>
+            <input type="text" id="cfgIosAdSlotId" placeholder="选填，iOS 端第三方广告联盟代码位 ID">
+          </div>
+          <div class="form-group">
+            <label>iOS 回调秘钥</label>
+            <input type="text" id="cfgIosSecretKey" placeholder="选填，iOS 端服务端回调验证密钥">
+          </div>
+          <div class="form-group full-row">
+            <label>备注</label>
+            <textarea id="cfgRemark" maxlength="200" placeholder="请输入备注，选填，最多 200 字"></textarea>
           </div>
         </div>
       </div>
@@ -471,14 +473,14 @@
   // Mock Data：广告位管理主数据
   // ============================================================
   const strategies = [
-    { id: 1, strategyName: '金币-主推-AdMob', app: '极速版', platform: 'Android', alliance: 'AdMob', adSlotId: 'ca-app-pub-3940256099942544-001', secretKey: 'secret_key_ab001', enabled: true, created: '2026-08-30 10:00:00' },
-    { id: 2, strategyName: '金币-兜底-腾讯', app: '极速版', platform: 'Android', alliance: '腾讯广告', adSlotId: 'posid-10001', secretKey: 'secret_key_tx002', enabled: true, created: '2026-08-30 10:00:00' },
-    { id: 3, strategyName: '大米-主推-Facebook', app: '极速版', platform: 'Android', alliance: 'Facebook', adSlotId: 'fb-slot-202', secretKey: 'secret_key_fb003', enabled: true, created: '2026-08-29 16:20:11' },
-    { id: 4, strategyName: '大米-备用-百度', app: '极速版', platform: 'IOS', alliance: '百度联盟', adSlotId: 'baidu-slot-303', secretKey: 'secret_key_bd004', enabled: false, created: '2026-08-29 16:20:11' },
-    { id: 5, strategyName: '祈福-主推-AdMob', app: '标准版', platform: 'IOS', alliance: 'AdMob', adSlotId: 'ca-app-pub-3940256099942544-005', secretKey: 'secret_key_ab005', enabled: true, created: '2026-08-28 09:15:40' },
-    { id: 6, strategyName: '礼包-主推-快手', app: '国际版', platform: 'Android', alliance: '快手联盟', adSlotId: 'ks-slot-505', secretKey: 'secret_key_ks006', enabled: true, created: '2026-08-27 14:03:22' },
-    { id: 7, strategyName: '签到-主推-百度', app: '标准版', platform: 'Android', alliance: '百度联盟', adSlotId: 'baidu-slot-606', secretKey: 'secret_key_bd007', enabled: true, created: '2026-08-26 11:48:09' },
-    { id: 8, strategyName: '流量-主推-腾讯', app: '极速版', platform: 'IOS', alliance: '腾讯广告', adSlotId: 'posid-10008', secretKey: 'secret_key_tx008', enabled: true, created: '2026-08-25 17:30:55' },
+    { id: 1, strategyName: '金币-主推-AdMob', appName: '极速版', alliance: 'AdMob', androidAdSlotId: 'ca-app-pub-3940256099942544-001', androidSecretKey: 'android_secret_ab001', iosAdSlotId: 'ca-app-pub-3940256099942544-ios001', iosSecretKey: 'ios_secret_ab001', remark: '金币任务主推广告位', enabled: true, created: '2026-08-30 10:00:00' },
+    { id: 2, strategyName: '金币-兜底-腾讯', appName: '极速版', alliance: '腾讯广告', androidAdSlotId: 'posid-android-10001', androidSecretKey: 'android_secret_tx002', iosAdSlotId: 'posid-ios-10001', iosSecretKey: 'ios_secret_tx002', remark: 'AdMob 不可用时兜底', enabled: true, created: '2026-08-30 10:00:00' },
+    { id: 3, strategyName: '大米-主推-Facebook', appName: '极速版', alliance: 'Facebook', androidAdSlotId: 'fb-android-slot-202', androidSecretKey: 'android_secret_fb003', iosAdSlotId: 'fb-ios-slot-202', iosSecretKey: 'ios_secret_fb003', remark: '', enabled: true, created: '2026-08-29 16:20:11' },
+    { id: 4, strategyName: '大米-备用-百度', appName: '极速版', alliance: '百度联盟', androidAdSlotId: 'baidu-android-slot-303', androidSecretKey: 'android_secret_bd004', iosAdSlotId: 'baidu-ios-slot-303', iosSecretKey: 'ios_secret_bd004', remark: '备用广告位', enabled: false, created: '2026-08-29 16:20:11' },
+    { id: 5, strategyName: '祈福-主推-AdMob', appName: '标准版', alliance: 'AdMob', androidAdSlotId: 'ca-app-pub-3940256099942544-005', androidSecretKey: 'android_secret_ab005', iosAdSlotId: 'ca-app-pub-3940256099942544-ios005', iosSecretKey: 'ios_secret_ab005', remark: '', enabled: true, created: '2026-08-28 09:15:40' },
+    { id: 6, strategyName: '礼包-主推-快手', appName: '国际版', alliance: '快手联盟', androidAdSlotId: 'ks-android-slot-505', androidSecretKey: 'android_secret_ks006', iosAdSlotId: 'ks-ios-slot-505', iosSecretKey: 'ios_secret_ks006', remark: '国际版礼包任务使用', enabled: true, created: '2026-08-27 14:03:22' },
+    { id: 7, strategyName: '签到-主推-百度', appName: '标准版', alliance: '百度联盟', androidAdSlotId: 'baidu-android-slot-606', androidSecretKey: 'android_secret_bd007', iosAdSlotId: 'baidu-ios-slot-606', iosSecretKey: 'ios_secret_bd007', remark: '', enabled: true, created: '2026-08-26 11:48:09' },
+    { id: 8, strategyName: '流量-主推-腾讯', appName: '极速版', alliance: '腾讯广告', androidAdSlotId: 'posid-android-10008', androidSecretKey: 'android_secret_tx008', iosAdSlotId: 'posid-ios-10008', iosSecretKey: 'ios_secret_tx008', remark: '流量任务主广告位', enabled: true, created: '2026-08-25 17:30:55' },
   ];
   let nextId = 9;
   let editingId = null; // null = 新增, number = 编辑
@@ -505,18 +507,20 @@
     const tbody = document.getElementById('tableBody');
     document.getElementById('totalCount').textContent = list.length;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告位数据，点击右上角「＋ 新增广告位」创建</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:48px 0;color:#bfbfbf;font-size:14px;">暂无广告位数据，点击右上角「＋ 新增广告位」创建</td></tr>';
       return;
     }
     tbody.innerHTML = list.map((row, idx) => {
       return `<tr class="${row.enabled ? '' : 'disabled-row'}">
         <td style="text-align:center;color:#8c8c8c;">${idx + 1}</td>
         <td style="color:#262626;font-weight:500;">${row.strategyName}</td>
-        <td>${row.app}</td>
-        <td><span class="tag tag-platform">${row.platform}</span></td>
+        <td>${row.appName}</td>
         <td><span class="tag tag-alliance">${row.alliance}</span></td>
-        <td>${row.adSlotId}</td>
-        <td><span class="secret-text">${row.secretKey}</span></td>
+        <td>${row.androidAdSlotId || '-'}</td>
+        <td><span class="secret-text">${row.androidSecretKey || '-'}</span></td>
+        <td>${row.iosAdSlotId || '-'}</td>
+        <td><span class="secret-text">${row.iosSecretKey || '-'}</span></td>
+        <td title="${row.remark || ''}">${row.remark || '-'}</td>
         <td><label class="switch" onclick="toggleStatus(event,${row.id})"><input type="checkbox" ${row.enabled?'checked':''}><span class="slider"></span></label></td>
         <td style="font-size:13px;color:#8c8c8c;">${row.created}</td>
         <td>
@@ -532,14 +536,12 @@
   // Filter
   // ============================================================
   function applyFilter() {
-    const app = document.getElementById('fApp').value;
-    const platform = document.getElementById('fPlatform').value;
+    const appName = document.getElementById('fAppName').value;
     const alliance = document.getElementById('fAlliance').value;
     const kw = document.getElementById('fKeyword').value.trim();
     const status = document.getElementById('fStatus').value;
     const list = strategies.filter(s => {
-      if (app !== '全部' && s.app !== app) return false;
-      if (platform !== '全部' && s.platform !== platform) return false;
+      if (appName !== '全部' && s.appName !== appName) return false;
       if (alliance !== '全部' && s.alliance !== alliance) return false;
       if (kw && s.strategyName.indexOf(kw) === -1) return false;
       if (status === '已启用' && !s.enabled) return false;
@@ -549,8 +551,7 @@
     renderTable(list);
   }
   function resetFilter() {
-    document.getElementById('fApp').value = '全部';
-    document.getElementById('fPlatform').value = '全部';
+    document.getElementById('fAppName').value = '全部';
     document.getElementById('fAlliance').value = '全部';
     document.getElementById('fKeyword').value = '';
     document.getElementById('fStatus').value = '全部';
@@ -565,11 +566,13 @@
     document.getElementById('configTitle').textContent = '新增广告位';
     document.getElementById('configModeHint').textContent = '正在新增：广告位';
     document.getElementById('cfgName').value = '';
-    document.getElementById('cfgApp').value = '';
-    document.getElementById('cfgPlatform').value = '';
+    document.getElementById('cfgAppName').value = '';
     document.getElementById('cfgAlliance').value = '';
-    document.getElementById('cfgAdSlotId').value = '';
-    document.getElementById('cfgSecretKey').value = '';
+    document.getElementById('cfgAndroidAdSlotId').value = '';
+    document.getElementById('cfgAndroidSecretKey').value = '';
+    document.getElementById('cfgIosAdSlotId').value = '';
+    document.getElementById('cfgIosSecretKey').value = '';
+    document.getElementById('cfgRemark').value = '';
     document.getElementById('configStatus').checked = true;
     updateStatusText();
     document.getElementById('configModal').classList.add('show');
@@ -582,11 +585,13 @@
     document.getElementById('configTitle').textContent = '编辑广告位';
     document.getElementById('configModeHint').textContent = '正在编辑：' + item.strategyName;
     document.getElementById('cfgName').value = item.strategyName;
-    document.getElementById('cfgApp').value = item.app;
-    document.getElementById('cfgPlatform').value = item.platform;
+    document.getElementById('cfgAppName').value = item.appName;
     document.getElementById('cfgAlliance').value = item.alliance;
-    document.getElementById('cfgAdSlotId').value = item.adSlotId;
-    document.getElementById('cfgSecretKey').value = item.secretKey;
+    document.getElementById('cfgAndroidAdSlotId').value = item.androidAdSlotId;
+    document.getElementById('cfgAndroidSecretKey').value = item.androidSecretKey;
+    document.getElementById('cfgIosAdSlotId').value = item.iosAdSlotId;
+    document.getElementById('cfgIosSecretKey').value = item.iosSecretKey;
+    document.getElementById('cfgRemark').value = item.remark || '';
     document.getElementById('configStatus').checked = item.enabled;
     updateStatusText();
     document.getElementById('configModal').classList.add('show');
@@ -607,27 +612,27 @@
   // ============================================================
   function saveStrategy() {
     const strategyName = document.getElementById('cfgName').value.trim();
-    const app = document.getElementById('cfgApp').value;
-    const platform = document.getElementById('cfgPlatform').value;
+    const appName = document.getElementById('cfgAppName').value;
     const alliance = document.getElementById('cfgAlliance').value;
-    const adSlotId = document.getElementById('cfgAdSlotId').value.trim();
-    const secretKey = document.getElementById('cfgSecretKey').value.trim();
+    const androidAdSlotId = document.getElementById('cfgAndroidAdSlotId').value.trim();
+    const androidSecretKey = document.getElementById('cfgAndroidSecretKey').value.trim();
+    const iosAdSlotId = document.getElementById('cfgIosAdSlotId').value.trim();
+    const iosSecretKey = document.getElementById('cfgIosSecretKey').value.trim();
+    const remark = document.getElementById('cfgRemark').value.trim();
     if (!strategyName) { showToast('请填写广告位名称'); return; }
-    if (!app) { showToast('请选择应用包名'); return; }
-    if (!platform) { showToast('请选择系统类型'); return; }
+    if (!appName) { showToast('请选择 APP名称'); return; }
     if (!alliance) { showToast('请选择广告联盟'); return; }
-    if (!adSlotId) { showToast('请填写广告位 ID'); return; }
-    if (!secretKey) { showToast('请填写回调秘钥'); return; }
-
     const enabled = document.getElementById('configStatus').checked;
 
     const data = {
       strategyName: strategyName,
-      app: app,
-      platform: platform,
+      appName: appName,
       alliance: alliance,
-      adSlotId: adSlotId,
-      secretKey: secretKey,
+      androidAdSlotId: androidAdSlotId,
+      androidSecretKey: androidSecretKey,
+      iosAdSlotId: iosAdSlotId,
+      iosSecretKey: iosSecretKey,
+      remark: remark,
       enabled: enabled,
     };
 
